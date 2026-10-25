@@ -1,0 +1,6 @@
+{
+    "name": "Poopline.Runtime",
+    "rootNamespace": "Poopline",
+    "references": ["Unity.InputSystem", "Unity.ugui"],
+    "autoReferenced": true
+}

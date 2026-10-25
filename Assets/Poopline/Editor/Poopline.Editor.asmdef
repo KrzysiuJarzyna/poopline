@@ -1,0 +1,6 @@
+{
+    "name": "Poopline.Editor",
+    "rootNamespace": "Poopline.Editor",
+    "references": ["Poopline.Runtime"],
+    "includePlatforms": ["Editor"]
+}

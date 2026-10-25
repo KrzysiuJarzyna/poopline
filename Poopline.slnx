@@ -1,6 +1,5 @@
 ﻿<Solution>
-  <Project Path="Assembly-CSharp.csproj" />
-  <Project Path="Unity.2DPlatformer.Tutorials.csproj" />
-  <Project Path="Assembly-CSharp-Editor.csproj" />
-  <Project Path="Unity.Platformer.Tutorials.csproj" />
+  <Project Path="Poopline.Runtime.csproj" />
+  <Project Path="Poopline.Editor.csproj" />
+  <Project Path="Poopline.PlayModeTests.csproj" />
 </Solution>

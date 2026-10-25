@@ -12,6 +12,7 @@
 
 *.csproj
 *.sln
+*.slnx
 *.suo
 *.user
 *.userprefs
@@ -30,3 +31,7 @@ MemoryCaptures/
 Recordings/
 
 sysinfo.txt
+
+# Local test reports and legacy Unity Version Control workspace state.
+TestResults/
+.plastic/
