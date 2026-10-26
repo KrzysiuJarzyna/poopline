@@ -410,25 +410,40 @@ namespace Poopline
             private void Sluice(SewerLevel level)
             {
                 var puzzle=root.gameObject.AddComponent<SluicePuzzle>();
-                puzzle.water=Group("Woda w zalanej komorze",new Vector3(34,1.3f,32));
-                Shape("Wysokie lustro wody",Vector3.zero,new Vector3(11.5f,.08f,11.5f),5,false,PrimitiveType.Cube,puzzle.water);
+                puzzle.water=Group("Woda w zalanym przejściu",new Vector3(32,1.3f,41));
+                Shape("Woda za progiem śluzy",new Vector3(-6,0,-5),new Vector3(3.7f,.08f,4.6f),5,false,PrimitiveType.Cube,puzzle.water);
+                Shape("Wysokie lustro w komorze",new Vector3(0,0,2),new Vector3(15.6f,.08f,9.6f),5,false,PrimitiveType.Cube,puzzle.water);
                 for(int n=0;n<10;n++)
                 {
-                    var ripple=Shape("Ruch wody w komorze",new Vector3(-4+n*.9f,.05f,(n%3-1)*2.8f),new Vector3(.06f,.012f,.9f),6,false,PrimitiveType.Cube,puzzle.water);
-                    ripple.AddComponent<WaterMotion>().direction=Vector3.right;
+                    var ripple=Shape("Ruch wody w komorze",new Vector3(-6+n*1.2f,.05f,2+(n%3-1)*2.8f),new Vector3(.06f,.012f,.9f),6,false,PrimitiveType.Cube,puzzle.water);
+                    ripple.AddComponent<WaterMotion>().direction=Vector3.back;
                 }
-                puzzle.gate=Group("Podnoszona krata śluzy",new Vector3(28.1f,0,32));
-                for(int n=0;n<=8;n++) Shape("Pręt kraty",new Vector3(0,1.45f,-1.9f+n*.475f),new Vector3(.14f,2.9f,.12f),4,false,PrimitiveType.Cube,puzzle.gate);
-                foreach(float y in new[]{.3f,2.5f}) Shape("Poprzeczka kraty",new Vector3(0,y,0),new Vector3(.18f,.16f,4),4,false,PrimitiveType.Cube,puzzle.gate);
-                var barrier=Group("Blokada zalanego przejścia",new Vector3(28.1f,1.4f,32));
-                puzzle.barrier=barrier.gameObject.AddComponent<BoxCollider>();puzzle.barrier.size=new Vector3(.3f,3,4.2f);
-                foreach(float z in new[]{29.9f,34.1f}) Shape("Prowadnica śluzy",new Vector3(28.1f,2.2f,z),new Vector3(.35f,4.4f,.22f),3);
-                Shape("Mechanizm podnoszenia",new Vector3(28.1f,3.65f,32),new Vector3(.7f,.5f,4.5f),3);
-                Beam("Przewód od zaworu do śluzy",new Vector3(30,2.4f,16),new Vector3(26.8f,2.4f,16),.12f,4);
-                Beam("Przewód przy ścianie",new Vector3(26.8f,2.4f,16),new Vector3(26.8f,2.4f,31),.12f,4);
-                Beam("Przewód nad kratą",new Vector3(26.8f,2.4f,31),new Vector3(28.1f,3.6f,32),.12f,4);
-                Shape("Podstawa zaworu",new Vector3(30,.5f,16),new Vector3(.6f,1,.6f),3,true);
-                puzzle.valve=Group("Zawór odpływu — przytrzymaj F",new Vector3(30,1.25f,15.55f));
+                for(int n=0;n<4;n++)
+                {
+                    var ripple=Shape("Nurt przy zatopionym progu",new Vector3(-6+(n%2-.5f),.05f,-6+n*.7f),new Vector3(.05f,.012f,.5f),6,false,PrimitiveType.Cube,puzzle.water);
+                    ripple.AddComponent<WaterMotion>().direction=Vector3.back;
+                }
+                // Front-facing entrance: the water and portcullis are visible before turning into the side corridor.
+                puzzle.gate=Group("Podnoszona krata śluzy",new Vector3(26,0,33.85f));
+                for(int n=0;n<=8;n++) Shape("Pręt kraty",new Vector3(-1.9f+n*.475f,1.45f,0),new Vector3(.12f,2.9f,.14f),4,false,PrimitiveType.Cube,puzzle.gate);
+                foreach(float y in new[]{.3f,2.5f}) Shape("Poprzeczka kraty",new Vector3(0,y,0),new Vector3(4,.16f,.18f),4,false,PrimitiveType.Cube,puzzle.gate);
+                var barrier=Group("Blokada zalanego przejścia",new Vector3(26,1.4f,33.85f));
+                puzzle.barrier=barrier.gameObject.AddComponent<BoxCollider>();puzzle.barrier.size=new Vector3(4.3f,3,.3f);
+                foreach(float x in new[]{23.9f,28.1f}) Shape("Prowadnica śluzy",new Vector3(x,2.2f,33.85f),new Vector3(.22f,4.4f,.35f),3);
+                Shape("Mechanizm podnoszenia",new Vector3(26,3.65f,33.85f),new Vector3(4.5f,.5f,.7f),3);
+                // One continuous low drain line: intake below flood level, service valve, then a lower outfall.
+                var intake=new Vector3(27.5f,.12f,35.2f);
+                Shape("Wlot rury pod wodą",intake,new Vector3(.55f,.06f,.7f),3);
+                Vector3[] pipe={intake,new Vector3(27.5f,.12f,33.5f),new Vector3(37,.12f,33.5f),new Vector3(37,.08f,30.5f),new Vector3(38,.06f,30.5f),new Vector3(38,.04f,27)};
+                var line=Group("Rura od zalanego kanału do odpływu",Vector3.zero);
+                var plumbing=new Builder(line,materials);
+                for(int n=1;n<pipe.Length;n++) plumbing.Beam("Ciągła rura odpływu",pipe[n-1],pipe[n],.3f,4);
+                foreach(var point in pipe) plumbing.Shape("Kolano odpływu",point,new Vector3(.34f,.34f,.34f),4,false,PrimitiveType.Sphere);
+                for(int n=0;n<5;n++)
+                    Shape("Obejma rury przy murze",new Vector3(28.8f+n*1.7f,.12f,33.5f),new Vector3(.07f,.39f,.39f),3);
+                Shape("Korpus zaworu",new Vector3(37,.46f,30.5f),new Vector3(.6f,.9f,.6f),3,true);
+                Beam("Trzpień zaworu odpływu",new Vector3(37,.3f,30.5f),new Vector3(37,1.25f,30.05f),.12f,3);
+                puzzle.valve=Group("Zawór odpływu — przytrzymaj F",new Vector3(37,1.25f,30.05f));
                 for(int n=0;n<16;n++)
                 {
                     float a=n*Mathf.PI*2/16;
@@ -440,27 +455,28 @@ namespace Poopline
                     var spoke=Shape("Szprycha zaworu",Vector3.zero,new Vector3(.8f,.065f,.1f),4,false,PrimitiveType.Cube,puzzle.valve);
                     spoke.transform.localRotation=Quaternion.Euler(0,0,n*60);
                 }
-                Shape("Pas przy stanowisku zaworu",new Vector3(30,.025f,14.5f),new Vector3(1.2f,.02f,.12f),4);
-                Lamp(30.6f,17,2.8f);
-                Lamp(27.2f,32.5f,3.3f);
-                Drain(31,28);
-                puzzle.discharge=Group("Odpływ po otwarciu zaworu",new Vector3(31,0,28));
-                Shape("Strumień do studni",new Vector3(0,.7f,0),new Vector3(.38f,1.4f,.38f),6,false,PrimitiveType.Cube,puzzle.discharge);
+                Shape("Pas przy stanowisku zaworu",new Vector3(37,.025f,29),new Vector3(1.2f,.02f,.12f),4);
+                Lamp(27.4f,33.3f,3.3f);Lamp(32,33.5f);Lamp(37.6f,32.5f,2.8f);Lamp(30,45,3.1f);
+                // Visible outfall in the valve alcove, connected to the same pipe rather than an unrelated ceiling leak.
+                Shape("Ciemna studnia odpływu",new Vector3(38,.015f,27),new Vector3(1.7f,.025f,1.6f),13);
+                for(int n=0;n<5;n++) Shape("Krata nad odpływem",new Vector3(37.3f+n*.35f,.04f,27),new Vector3(.07f,.04f,1.6f),3);
+                puzzle.discharge=Group("Woda schodząca do dolnego kanału",new Vector3(38,0,27));
+                Shape("Strumień w studni",new Vector3(0,.14f,0),new Vector3(.32f,.26f,.32f),6,false,PrimitiveType.Cube,puzzle.discharge);
                 for(int n=0;n<8;n++)
                 {
-                    var drop=Shape("Kropla odpływu",new Vector3((n%3-1)*.3f,1.5f,(n%2)*.3f),new Vector3(.06f,.22f,.06f),6,false,PrimitiveType.Cube,puzzle.discharge);
-                    var motion=drop.AddComponent<WaterDrip>();motion.fall=1.45f;motion.phase=n*.23f;
+                    var drop=Shape("Kropla odpływu",new Vector3((n%3-1)*.16f,.22f,(n%2)*.13f),new Vector3(.045f,.1f,.045f),6,false,PrimitiveType.Cube,puzzle.discharge);
+                    var motion=drop.AddComponent<WaterDrip>();motion.fall=.2f;motion.phase=n*.07f;
                 }
                 puzzle.discharge.gameObject.SetActive(false);
-                for(int n=0;n<5;n++) Shape("Ślad poziomu wody na murze",new Vector3(39.7f,.35f+n*.35f,32),new Vector3(.03f,.05f,.55f),1);
-                for(int x=28;x<40;x++) for(int z=26;z<38;z++) if(floor.ContainsKey(new Vector2Int(x,z))) floor[new Vector2Int(x,z)]=true;
-                Landmark("Zawór odpływu",30,15);Landmark("Zalana komora",30,32);
+                for(int n=0;n<5;n++) Shape("Ślad poziomu wody na murze",new Vector3(27.84f,.35f+n*.35f,35.5f),new Vector3(.03f,.05f,.55f),1);
+                foreach(var point in new System.Collections.Generic.List<Vector2Int>(floor.Keys))
+                    if(puzzle.chamber.Contains(new Vector3(point.x+.5f,0,point.y+.5f))) floor[point]=true;
+                Landmark("Zalane przejście",26,33);Landmark("Zawór odpływu",37,29);
             }
             public void Stage(int index)
             {
                 var level=root.gameObject.AddComponent<SewerLevel>();
                 level.title=index==0?"Pod kamienicami":"Żeliwne mosty";
-                level.introduction=index==0?"Przejście dalej poznasz po chłodnym świetle. E / M — mapa.":"Mosty, woda czy boczne komory? Wybierz drogę obok patroli.";
                 level.start=new Vector3(3,.05f,-3.55f);
                 int length=index==0?32:44;
                 Canal(length,0,index==0?new[]{8f,24f}:new[]{8f,24f,36f},new float[0],false);
@@ -473,19 +489,21 @@ namespace Poopline
                 {
                     Footprint(2,14,12,10);Footprint(22,5,4,5);Footprint(20,10,12,10);
                     Footprint(14,16,6,4);Footprint(6,24,4,6);Footprint(24,20,4,10);
-                    Footprint(6,30,22,4);Footprint(0,28,6,6);Footprint(28,26,12,12);
+                    Footprint(6,30,22,4);Footprint(0,28,6,6);
+                    // Both routes meet at the flood. The valve branch has no entrance from the earlier pump room.
+                    Footprint(24,34,4,4,true);Footprint(24,38,16,10,true);
+                    Footprint(28,30,6,4);Footprint(34,26,6,8);
                     BuildRooms();WetTunnel(8,5,14);Cistern(8,19);Pumps(24,18);
                     Drain(2,31);Landmark("Studnia pod podwórkiem",3,30);
                     Arch(new Vector3(16,0,18),90);Arch(new Vector3(26,0,24));
-                    Lamp(11,23);Lamp(25,29);Lamp(34,37);
+                    Lamp(11,23);Lamp(25,29);
                     // A dry crossing is optional; water remains traversable everywhere along both banks.
                     Shape("Niski mostek serwisowy",new Vector3(17,-.15f,0),new Vector3(2,.3f,4.7f),1,true);
-                    ExitDoor(level,38,34);Sluice(level);
-                    level.checkpoints=new[]{new Vector3(8,.05f,15),new Vector3(30,.05f,13.5f),new Vector3(26,.05f,31)};
-                    level.objectives=new[]{"Znajdź przejście do dalszego kanału.","Komory łączą się. Szukaj dalszego kanału.","Szukaj chłodnego światła przy odpływie."};
-                    level.suggestedRoute=new[]{P(8,-3.55f),P(8,3.55f),P(8,15),P(4,15),P(4,23),P(8,23),P(8,32),P(26,32),P(26,19),P(29,19),P(29,14.5f),P(30,14.5f),P(29,14.5f),P(29,19),P(26,19),P(26,32),P(34,32),P(37.6f,34)};
-                    level.alternateRoute=new[]{P(24,-3.55f),P(24,3.55f),P(24,12),P(30,12),P(30,14.5f),P(29,14.5f),P(29,19),P(26,19),P(26,32),P(34,32),P(37.6f,34)};
-                    level.playableBounds=new Bounds(new Vector3(19,2,17),new Vector3(46,12,48));
+                    ExitDoor(level,38,44);Sluice(level);
+                    level.checkpoints=new[]{new Vector3(8,.05f,15),new Vector3(26,.05f,31.5f),new Vector3(36,.05f,29)};
+                    level.suggestedRoute=new[]{P(8,-3.55f),P(8,3.55f),P(8,15),P(4,15),P(4,23),P(8,23),P(8,32),P(26,32),P(36,32),P(36,29),P(37,29),P(36,29),P(36,32),P(26,32),P(26,40),P(32,40),P(37.6f,44)};
+                    level.alternateRoute=new[]{P(24,-3.55f),P(24,3.55f),P(24,12),P(30,12),P(30,19),P(26,19),P(26,32),P(36,32),P(36,29),P(37,29),P(36,29),P(36,32),P(26,32),P(26,40),P(32,40),P(37.6f,44)};
+                    level.playableBounds=new Bounds(new Vector3(19,2,23),new Vector3(46,12,60));
                 }
                 else
                 {
@@ -503,7 +521,6 @@ namespace Poopline
                     Rat(new Vector3(16,.12f,35),new Vector3(23,.12f,35),1.1f);
                     ExitDoor(level,48,38);
                     level.checkpoints=new[]{new Vector3(24,.05f,9),new Vector3(36,.05f,32)};
-                    level.objectives=new[]{"Znajdź drogę obok patroli. E / M — mapa.","Boczne komory prowadzą wokół pomp.","Chłodne światło prowadzi do wyjścia."};
                     level.suggestedRoute=new[]{P(8,-3.9f),new Vector3(8,2.6f,-3.05f),new Vector3(8,2.6f,3.55f),new Vector3(18,2.6f,3.55f),P(19.45f,3.55f),P(24,3.55f),P(24,9),P(24,17),P(36,17),P(36,26),P(36,34),P(44,34),P(47.6f,38)};
                     level.alternateRoute=new[]{P(5,-3.55f),P(5,3.55f),P(8,3.55f),P(8,15),P(4,15),P(4,23),P(14,23),P(14,33),P(25,33),P(36,33),P(44,33),P(47.6f,38)};
                     level.playableBounds=new Bounds(new Vector3(24,2,18),new Vector3(56,12,52));

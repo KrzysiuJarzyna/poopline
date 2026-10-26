@@ -26,20 +26,18 @@ namespace Poopline
             Panel(new Rect(24,24,316,91),ink);Panel(new Rect(24,24,4,91),new Color(.91f,.62f,.24f));
             GUI.Label(new Rect(43,32,280,34),"POOPLINE",title);
             GUI.Label(new Rect(44,72,280,23),"POD MIASTEM   /   "+(game.LevelIndex+1)+" Z 2",small);
-            Panel(new Rect(882,24,374,91),ink);
-            string objective=game.Completed?"Oba poziomy za tobą.":game.Objective;
-            GUI.Label(new Rect(901,37,335,48),objective,body);
-            GUI.Label(new Rect(901,84,335,23),(game.LevelIndex+1).ToString("00")+"  /  "+game.CurrentLevel.title.ToUpperInvariant(),small);
+            Panel(new Rect(882,24,374,55),ink);
+            GUI.Label(new Rect(901,40,335,27),(game.LevelIndex+1).ToString("00")+"  /  "+game.CurrentLevel.title.ToUpperInvariant(),body);
             Panel(new Rect(24,644,1232,52),ink);
-            GUI.Label(new Rect(43,659,930,26),"WASD  ruch i drabiny    F  zawór    E / M  mapa    ESC  pauza    R  punkt kontrolny",body);
+            GUI.Label(new Rect(43,659,930,26),"WASD  ruch i drabiny    F  interakcja    E / M  mapa    ESC  pauza    R  punkt kontrolny",body);
             GUI.Label(new Rect(1075,662,165,25),game.Player.Climbing?"NA DRABINIE":game.Player.InWater?"W NURCIE":"SUCHY POMOST",small);
             if(!game.Frozen)
             {
                 var ladder=game.Player.ActiveLadder!=null?game.Player.ActiveLadder:game.Player.NearbyLadder;
                 string prompt="";
-                if(game.LevelIndex==0 && game.Sluice.InReach && !game.Sluice.Solved)
+                if(game.LevelIndex==0 && game.Sluice.Seen && game.Sluice.InReach && !game.Sluice.Solved)
                 {
-                    prompt="Przytrzymaj F — otwórz odpływ";
+                    prompt="Przytrzymaj F — obróć zawór";
                     Panel(new Rect(392,614,496,4),new Color(.15f,.25f,.28f));
                     Panel(new Rect(392,614,496*game.Sluice.HoldProgress,4),new Color(.91f,.62f,.24f));
                 }
@@ -50,9 +48,10 @@ namespace Poopline
                         ?ladder.DirectionHint(game.GameCamera,true)+"  w górę     "+ladder.DirectionHint(game.GameCamera,false)+"  w dół"
                         :ladder.DirectionHint(game.GameCamera,ascending)+(ascending?"   Wejdź po drabinie":"   Zejdź po drabinie");
                 }
-                else if(game.Player.InWater) prompt="Idź w stronę brzegu, żeby wyjść z nurtu.";
+                else if(game.Player.InWater) prompt="WASD / strzałki — ruch w wodzie";
                 if(prompt!="") {Panel(new Rect(376,569,528,46),ink);GUI.Label(new Rect(392,580,504,29),prompt,body);}
-                if(Time.unscaledTime<game.NoticeUntil) {Panel(new Rect(340,126,600,52),ink);GUI.Label(new Rect(356,139,572,35),game.Notice,body);}
+                if(!game.Thoughts.Speaking && Time.unscaledTime<game.NoticeUntil) {Panel(new Rect(340,126,600,52),ink);GUI.Label(new Rect(356,139,572,35),game.Notice,body);}
+                ThoughtBubbleView.Draw(game,scale);
             }
             if(Time.unscaledTime<game.SavedUntil) GUI.Label(new Rect(1120,611,140,25),"● Zapisano",small);
             if(game.Transitioning && !game.Paused)

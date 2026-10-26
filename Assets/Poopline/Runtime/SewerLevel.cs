@@ -21,12 +21,10 @@ namespace Poopline
     public sealed class SewerLevel : MonoBehaviour
     {
         public string title;
-        [TextArea] public string introduction;
         public Vector3 start;
         public Bounds exit;
         public Bounds playableBounds;
         public Vector3[] checkpoints;
-        public string[] objectives;
         public Vector3[] suggestedRoute;
         public MapCell[] mapCells;
         public MapLandmark[] landmarks;

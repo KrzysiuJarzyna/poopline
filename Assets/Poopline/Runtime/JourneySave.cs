@@ -8,6 +8,10 @@ namespace Poopline
     {
         public int format=1, layout=PooplineGame.LayoutVersion, level, checkpoint=-1;
         public bool sluiceSolved, sluiceSeen, completed;
+        // Optional in layout-10 saves from 0.6.1; missing fields safely default to zero.
+        public int sluiceHintStep;
+        public float sluiceHintElapsed;
+        public bool sluiceValveFound;
         public float elapsed, levelElapsed;
         public float[] stageTimes;
         public string[] maps;
@@ -21,6 +25,7 @@ namespace Poopline
             if(record==null || record.format!=1 || record.layout!=PooplineGame.LayoutVersion || record.level<0 || record.level>=levels.Length) return false;
             if(record.checkpoint< -1 || record.checkpoint>=levels[record.level].checkpoints.Length || record.maps==null || record.maps.Length!=levels.Length || record.stageTimes==null || record.stageTimes.Length!=levels.Length) return false;
             if(!Finite(record.elapsed) || !Finite(record.levelElapsed) || record.levelElapsed>record.elapsed+.1f) return false;
+            if(record.sluiceHintStep<0 || record.sluiceHintStep>3 || !Finite(record.sluiceHintElapsed) || record.sluiceHintElapsed>SluicePuzzle.ValveHintDelay+.5f) return false;
             foreach(float t in record.stageTimes) if(!Finite(t)) return false;
             for(int i=0;i<record.maps.Length;i++)
             {

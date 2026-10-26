@@ -58,7 +58,7 @@ namespace Poopline
                 if(!map.IsDiscovered(landmark.position)) continue;
                 Vector2 p=MapPoint(landmark.position);
                 Box(new Rect(p.x-3,p.y-3,6,6),landmark.exit?new Color(.4f,1,.8f):Paper);
-                GUI.Label(new Rect(p.x+8,p.y-11,170,32),landmark.name=="Zalana komora" && game.Sluice.IsOpen?"Osuszona komora":landmark.name,marker);
+                GUI.Label(new Rect(p.x+8,p.y-11,170,32),landmark.name=="Zalane przejście" && game.Sluice.IsOpen?"Osuszona komora":landmark.name,marker);
             }
             Vector2 player=MapPoint(game.Player.transform.position);
             Box(new Rect(player.x-7,player.y-7,14,14),new Color(.025f,.055f,.065f));

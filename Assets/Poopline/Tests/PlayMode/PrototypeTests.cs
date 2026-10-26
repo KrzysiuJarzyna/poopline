@@ -72,7 +72,7 @@ namespace Poopline.Tests
                 if(Mathf.Abs(delta.y)>.09f) keys.Add(delta.y>0?Key.W:Key.S);
                 Keys(keys.ToArray());yield return null;
             }
-            Assert.Fail("Could not reach "+point+" from "+game.Player.transform.position+" stage "+game.LevelIndex);
+            Assert.Fail("Could not reach "+point+" from "+game.Player.transform.position+" stage "+game.LevelIndex+" paused "+game.Paused+" map "+game.MapOpen+" input "+game.Input.Move);
         }
         private IEnumerator Climb(SewerLadder ladder,bool up)
         {
@@ -83,18 +83,30 @@ namespace Poopline.Tests
             Assert.That(game.Player.Climbing,Is.True);
             yield return new WaitForSeconds(2.3f);
             Keys();yield return new WaitForSeconds(.15f);
-            Assert.That(game.Player.Climbing,Is.False);
+            Assert.That(game.Player.Climbing,Is.False,ladder.name+" up "+up+" paused "+game.Paused+" map "+game.MapOpen+" input "+game.Input.Move+" position "+game.Player.transform.position);
             Assert.That(Vector3.Distance(game.Player.transform.position,up?ladder.TopLanding:ladder.BottomLanding),Is.LessThan(.18f));
         }
         private IEnumerator UseValveAtWaypoint(Vector3 point)
         {
-            if(game.LevelIndex!=0 || game.Sluice.Solved || Vector3.Distance(point,new Vector3(30,0,14.5f))>.2f) yield break;
+            if(game.LevelIndex!=0 || game.Sluice.Solved || Vector3.Distance(point,game.Sluice.valveStand)>.2f) yield break;
+            Assert.That(game.Sluice.Seen,Is.True,"The flooded passage must be encountered before the valve");
             Assert.That(game.Sluice.InReach,Is.True);
             Keys(Key.F);yield return new WaitForSeconds(1.7f);Keys();
             Assert.That(game.Sluice.Solved,Is.True);
             ScreenCapture.CaptureScreenshot("TestResults/sluice-valve.png");yield return new WaitForEndOfFrame();
             yield return new WaitForSeconds(4.7f);
             Assert.That(game.Sluice.IsOpen,Is.True);
+        }
+        private IEnumerator InspectFloodAtWaypoint(Vector3 point)
+        {
+            if(game.LevelIndex!=0 || game.Sluice.Solved || Vector3.Distance(point,new Vector3(26,0,32))>.2f) yield break;
+            Assert.That(game.Sluice.Seen,Is.True);
+            Assert.That(game.Sluice.HoldProgress,Is.Zero);
+            Assert.That(game.Map.IsDiscovered(game.Sluice.valveStand),Is.False,"The side alcove has not been visited yet");
+            Keys(Key.W);yield return new WaitForSeconds(.7f);Keys();yield return null;
+            Assert.That(game.Player.transform.position.z,Is.LessThan(33.6f),"Water blocks the route before the detour");
+            ScreenCapture.CaptureScreenshot("TestResults/sluice-first-encounter.png");yield return new WaitForEndOfFrame();
+            yield return WalkTo(new Vector3(26,0,32));
         }
         // A fixture shortcut for isolated component tests. The campaign test below never uses it.
         private IEnumerator SecondStage()
@@ -186,7 +198,7 @@ namespace Poopline.Tests
                         yield return WalkTo(match.TopLanding);yield return Climb(match,false);
                     }
                     else yield return WalkTo(point);
-                    yield return UseValveAtWaypoint(point);
+                    yield return InspectFloodAtWaypoint(point);yield return UseValveAtWaypoint(point);
                     Assert.That(game.Recoveries,Is.Zero,"Route waypoint "+point);
                     if(stage==0 && Mathf.Abs(point.x-4)<.1f && point.z>20)
                     {
@@ -390,7 +402,7 @@ namespace Poopline.Tests
             Time.timeScale=2;
             for(int stage=0;stage<2;stage++)
             {
-                foreach(var point in game.CurrentLevel.alternateRoute) {yield return WalkTo(point);yield return UseValveAtWaypoint(point);}
+                foreach(var point in game.CurrentLevel.alternateRoute) {yield return WalkTo(point);yield return InspectFloodAtWaypoint(point);yield return UseValveAtWaypoint(point);}
                 Assert.That(game.Recoveries,Is.Zero);
                 if(stage==0) { Assert.That(game.Transitioning,Is.True);yield return new WaitForSeconds(1.6f); }
             }
@@ -540,12 +552,12 @@ namespace Poopline.Tests
             Keys(Key.F);yield return new WaitForSeconds(1.7f);Keys();Assert.That(game.Sluice.Solved,Is.False);
             game.Player.ResetAt(new Vector3(26,0,32));yield return new WaitForSeconds(.2f);
             Assert.That(game.Sluice.Seen,Is.True);
-            Keys(Key.D);yield return new WaitForSeconds(1);Keys();yield return null;
-            Assert.That(game.Player.transform.position.x,Is.LessThan(28));
+            Keys(Key.W);yield return new WaitForSeconds(1);Keys();yield return null;
+            Assert.That(game.Player.transform.position.z,Is.LessThan(33.6f));
             ScreenCapture.CaptureScreenshot("TestResults/sluice-flooded.png");yield return new WaitForEndOfFrame();
             game.Player.ResetAt(game.CurrentLevel.exit.center);yield return new WaitForSeconds(.2f);
             Assert.That(game.Transitioning,Is.False,"Exit stays locked even if a fixture bypasses the gate");
-            game.Player.ResetAt(new Vector3(30,0,14.5f));yield return null;
+            game.Player.ResetAt(game.Sluice.valveStand);yield return null;
             Keys(Key.F);yield return new WaitForSeconds(.5f);Keys();yield return new WaitForSeconds(.4f);
             Assert.That(game.Sluice.HoldProgress,Is.Zero);Assert.That(game.Sluice.Solved,Is.False);
             Keys(Key.F);yield return new WaitForSeconds(.4f);game.ToggleMap();float hold=game.Sluice.HoldProgress;
@@ -556,11 +568,11 @@ namespace Poopline.Tests
             game.TogglePause();float drain=game.Sluice.DrainProgress;Vector3 water=game.Sluice.water.position;
             yield return new WaitForSeconds(.5f);Assert.That(game.Sound.EffectsSource.isPlaying,Is.False,"Pause also stops interaction audio");Assert.That(game.Sluice.DrainProgress,Is.EqualTo(drain));Assert.That(game.Sluice.water.position,Is.EqualTo(water));
             game.TogglePause();yield return new WaitForSeconds(4.7f);
-            Assert.That(game.Sluice.IsOpen,Is.True);Assert.That(game.Sluice.barrier.enabled,Is.False);
+            Assert.That(game.Sluice.IsOpen,Is.True,"Drain "+game.Sluice.DrainProgress+" paused "+game.Paused+" map "+game.MapOpen);Assert.That(game.Sluice.barrier.enabled,Is.False);
             Assert.That(game.Sluice.water.position.y,Is.LessThan(0));Assert.That(game.Sluice.gate.position.y,Is.GreaterThan(3));
-            game.Player.ResetAt(new Vector3(26,0,32));yield return WalkTo(new Vector3(34,0,32));
+            game.Player.ResetAt(new Vector3(26,0,32));yield return WalkTo(new Vector3(26,0,40));
             ScreenCapture.CaptureScreenshot("TestResults/sluice-drained.png");yield return new WaitForEndOfFrame();
-            yield return WalkTo(new Vector3(37.6f,0,34));Assert.That(game.Transitioning,Is.True);
+            yield return WalkTo(new Vector3(37.6f,0,44));Assert.That(game.Transitioning,Is.True);
         }
         [UnityTest]
         public IEnumerator EnterCannotOverwriteCompletedJourneyWithoutConfirmation()
@@ -579,7 +591,8 @@ namespace Poopline.Tests
         [UnityTest]
         public IEnumerator SavingDuringDrainRestoresOpenPassageAndRetryKeepsItSolved()
         {
-            game.Player.ResetAt(new Vector3(30,0,14.5f));yield return null;
+            game.Player.ResetAt(new Vector3(26,0,32));yield return new WaitForSeconds(.2f);
+            game.Player.ResetAt(game.Sluice.valveStand);yield return null;
             Keys(Key.F);yield return new WaitForSeconds(1.7f);Keys();
             Assert.That(game.Sluice.Solved && !game.Sluice.IsOpen,Is.True);
             game.ReturnToMenu();
@@ -587,6 +600,137 @@ namespace Poopline.Tests
             game.ContinueJourney();yield return null;
             Assert.That(game.Sluice.IsOpen,Is.True);Assert.That(game.Sluice.barrier.enabled,Is.False);
             game.RetryCheckpoint();Assert.That(game.Sluice.IsOpen,Is.True);
+        }
+        [Test]
+        public void OnlyAccessToValveGoesThroughTheFloodVestibule()
+        {
+            var floor=new HashSet<Vector2Int>();
+            foreach(var cell in game.CurrentLevel.mapCells)
+            {
+                Vector3 point=new Vector3(cell.position.x,0,cell.position.y);
+                if(!game.Sluice.chamber.Contains(point)) floor.Add(new Vector2Int(Mathf.FloorToInt(point.x),Mathf.FloorToInt(point.z)));
+            }
+            Vector2Int start=new Vector2Int(3,-4),target=new Vector2Int(37,29);
+            bool Reachable(bool avoidEncounter)
+            {
+                var seen=new HashSet<Vector2Int>{start};var queue=new Queue<Vector2Int>();queue.Enqueue(start);
+                while(queue.Count>0)
+                {
+                    var p=queue.Dequeue();if(p==target) return true;
+                    foreach(var d in new[]{Vector2Int.up,Vector2Int.down,Vector2Int.left,Vector2Int.right})
+                    {
+                        var next=p+d;var point=new Vector3(next.x+.5f,0,next.y+.5f);
+                        if(!floor.Contains(next) || seen.Contains(next) || (avoidEncounter && game.Sluice.approach.Contains(point))) continue;
+                        seen.Add(next);queue.Enqueue(next);
+                    }
+                }
+                return false;
+            }
+            Assert.That(Reachable(false),Is.True,"The side passage must actually connect to the starting area");
+            Assert.That(Reachable(true),Is.False,"No route may reach the valve while skipping the flood vestibule");
+        }
+        [UnityTest]
+        public IEnumerator ThoughtsEscalateAfterExplorationTimeAndWaitDuringMapAndPause()
+        {
+            Assert.That(game.Thoughts.LineId,Does.StartWith("EnterCanal."));
+            game.Player.ResetAt(new Vector3(26,0,32));yield return new WaitForSeconds(.3f);
+            Assert.That(game.Thoughts.LineId,Does.StartWith("FloodBlocked."));
+            Assert.That(game.Sluice.HintStep,Is.EqualTo(1));
+            ScreenCapture.CaptureScreenshot("TestResults/thought-first-encounter.png");yield return new WaitForEndOfFrame();
+            game.ToggleMap();float waited=game.Sluice.HintElapsed,remaining=game.Thoughts.Remaining;
+            yield return new WaitForSeconds(.3f);
+            Assert.That(game.Sluice.HintElapsed,Is.EqualTo(waited));Assert.That(game.Thoughts.Remaining,Is.EqualTo(remaining));
+            game.ToggleMap();game.TogglePause();yield return new WaitForSeconds(.3f);
+            Assert.That(game.Sluice.HintElapsed,Is.EqualTo(waited));Assert.That(game.Thoughts.Remaining,Is.EqualTo(remaining));
+            game.TogglePause();Time.timeScale=10;
+            yield return new WaitForSeconds(43-game.Sluice.HintElapsed);
+            Assert.That(game.Sluice.HintStep,Is.EqualTo(1));Assert.That(game.Thoughts.Speaking,Is.False);
+            yield return new WaitForSeconds(2.5f);
+            Assert.That(game.Sluice.HintStep,Is.EqualTo(2));Assert.That(game.Thoughts.LineId,Does.StartWith("DrainIdea."));
+            ScreenCapture.CaptureScreenshot("TestResults/thought-drain-idea.png");yield return new WaitForEndOfFrame();
+            yield return new WaitForSeconds(58-game.Sluice.HintElapsed);
+            Assert.That(game.Sluice.HintStep,Is.EqualTo(2));Assert.That(game.Thoughts.Speaking,Is.False);
+            yield return new WaitForSeconds(2.5f);
+            Assert.That(game.Sluice.HintStep,Is.EqualTo(3));Assert.That(game.Thoughts.LineId,Does.StartWith("ValveIdea."));
+            ScreenCapture.CaptureScreenshot("TestResults/thought-valve-idea.png");yield return new WaitForEndOfFrame();
+            yield return new WaitForSeconds(70);
+            Assert.That(game.Sluice.HintStep,Is.EqualTo(3));Assert.That(game.Thoughts.Speaking,Is.False,"No repeated hint loop");
+        }
+        [UnityTest]
+        public IEnumerator ThoughtProgressSurvivesMenuReloadAndRetryButNewGameResetsIt()
+        {
+            game.Player.ResetAt(new Vector3(26,0,32));yield return new WaitForSeconds(.2f);
+            game.Sluice.Restore(false,true,2,27);
+            game.ReturnToMenu();float waited=game.Sluice.HintElapsed;
+            yield return new WaitForSeconds(.3f);
+            Assert.That(game.Sluice.HintElapsed,Is.EqualTo(waited));Assert.That(game.Thoughts.Speaking,Is.False);
+            yield return SceneManager.LoadSceneAsync("Poopline");game=Object.FindAnyObjectByType<PooplineGame>();
+            game.ContinueJourney();yield return null;
+            Assert.That(game.Sluice.HintStep,Is.EqualTo(2));Assert.That(game.Sluice.HintElapsed,Is.EqualTo(waited).Within(.5f));
+            Assert.That(game.Thoughts.Speaking,Is.False,"Do not replay introduction or first encounter on Continue");
+            game.RetryCheckpoint();yield return null;
+            Assert.That(game.Sluice.HintStep,Is.EqualTo(2));Assert.That(game.Thoughts.Speaking,Is.False);
+            game.StartNewGame();yield return null;
+            Assert.That(game.Sluice.HintStep,Is.Zero);Assert.That(game.Sluice.HintElapsed,Is.Zero);Assert.That(game.Sluice.ValveFound,Is.False);
+            Assert.That(game.Thoughts.LineId,Does.StartWith("EnterCanal."));
+        }
+        [UnityTest]
+        public IEnumerator FindingValveStopsHintsAndDrainReplacesObsoleteThoughts()
+        {
+            game.Sluice.Restore(false,true,2,59.9f);
+            game.Player.ResetAt(game.Sluice.valveStand);yield return new WaitForSeconds(.3f);
+            Assert.That(game.Sluice.ValveFound,Is.True);Assert.That(game.Thoughts.LineId,Does.StartWith("ValveFound."));
+            game.ReturnToMenu();yield return SceneManager.LoadSceneAsync("Poopline");game=Object.FindAnyObjectByType<PooplineGame>();
+            game.ContinueJourney();yield return null;
+            Assert.That(game.Sluice.ValveFound,Is.True);
+            Time.timeScale=10;yield return new WaitForSeconds(70);
+            Assert.That(game.Thoughts.Speaking,Is.False);Assert.That(game.Sluice.HintStep,Is.EqualTo(2));
+            Time.timeScale=1;game.Player.ResetAt(game.Sluice.valveStand);yield return null;
+            Keys(Key.F);yield return new WaitForSeconds(1.7f);Keys();
+            Assert.That(game.Sluice.Solved,Is.True);Assert.That(game.Thoughts.LineId,Does.StartWith("DrainStarted."));
+            yield return new WaitForSeconds(4.7f);
+            Assert.That(game.Thoughts.LineId,Does.StartWith("PassageOpen."));
+            ScreenCapture.CaptureScreenshot("TestResults/thought-passage-open.png");yield return new WaitForEndOfFrame();
+            yield return SecondStage();
+            Assert.That(game.Thoughts.LineId,Does.StartWith("EnterBridges."));
+        }
+        [Test]
+        public void PreviousLayoutTenSavesAcceptMissingThoughtFieldsAndRejectInvalidTimers()
+        {
+            game.Sluice.Restore(false,true);game.SaveProgress();
+            string json=PlayerPrefs.GetString(JourneySave.Key)
+                .Replace("\"sluiceHintStep\":1,","").Replace("\"sluiceHintElapsed\":0.0,","").Replace("\"sluiceHintElapsed\":0,","").Replace("\"sluiceValveFound\":false,","");
+            Assert.That(json,Does.Not.Contain("sluiceHint"));Assert.That(json,Does.Not.Contain("sluiceValveFound"));
+            PlayerPrefs.SetString(JourneySave.Key,json);PlayerPrefs.DeleteKey(JourneySave.Key+".backup");
+            var record=JourneySave.Load(game.Levels);
+            Assert.That(record,Is.Not.Null);Assert.That(record.sluiceSeen,Is.True);Assert.That(record.sluiceHintStep,Is.Zero);
+            game.Sluice.Restore(record.sluiceSolved,record.sluiceSeen,record.sluiceHintStep,record.sluiceHintElapsed,record.sluiceValveFound);
+            Assert.That(game.Sluice.HintStep,Is.EqualTo(1));Assert.That(game.Sluice.HintElapsed,Is.Zero);
+            record.sluiceHintElapsed=float.NaN;Assert.That(JourneySave.Valid(record,game.Levels),Is.False);
+            record.sluiceHintElapsed=1000;Assert.That(JourneySave.Valid(record,game.Levels),Is.False);
+            record.sluiceHintElapsed=0;record.sluiceHintStep=4;Assert.That(JourneySave.Valid(record,game.Levels),Is.False);
+        }
+        [UnityTest]
+        public IEnumerator EncounterCheckpointRestoresUnsolvedPuzzleAndSidePassageRemainsReachable()
+        {
+            game.Player.ResetAt(new Vector3(26,0,32));yield return new WaitForSeconds(.3f);
+            Assert.That(game.CheckpointIndex,Is.EqualTo(1));Assert.That(game.Sluice.Seen && !game.Sluice.Solved,Is.True);
+            game.ReturnToMenu();yield return SceneManager.LoadSceneAsync("Poopline");game=Object.FindAnyObjectByType<PooplineGame>();
+            game.ContinueJourney();yield return new WaitForSeconds(.2f);
+            Assert.That(game.Sluice.Seen && !game.Sluice.Solved,Is.True);Assert.That(game.CheckpointIndex,Is.EqualTo(1));
+            Assert.That(game.Sluice.barrier.enabled,Is.True);
+            yield return WalkTo(new Vector3(26,0,32));yield return WalkTo(new Vector3(36,0,32));
+            yield return WalkTo(new Vector3(36,0,29));yield return WalkTo(game.Sluice.valveStand);
+            yield return UseValveAtWaypoint(game.Sluice.valveStand);
+            Assert.That(game.Sluice.IsOpen,Is.True);Assert.That(game.CheckpointIndex,Is.EqualTo(2));
+        }
+        [UnityTest]
+        public IEnumerator ValveCannotDrainAnUnencounteredPassage()
+        {
+            game.Player.ResetAt(game.Sluice.valveStand);yield return null;
+            Keys(Key.F);yield return new WaitForSeconds(1.7f);Keys();
+            Assert.That(game.Sluice.InReach,Is.True);Assert.That(game.Sluice.Seen,Is.False);
+            Assert.That(game.Sluice.Solved,Is.False);Assert.That(game.Sluice.HoldProgress,Is.Zero);
         }
         [Test]
         public void CurrentIsLocalAndDoesNotReachUpperWalkway()

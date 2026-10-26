@@ -20,7 +20,11 @@ namespace Poopline
             transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime * 240);
             Vector3 delta = game.Player.transform.position - transform.position;
             if (Mathf.Abs(delta.y) < 0.8f && new Vector2(delta.x, delta.z).magnitude < 0.72f)
-                game.Recover("Szczur cię zawrócił. Spróbuj przejść wodą albo górą.");
+            {
+                int before=game.Recoveries;
+                game.Recover("Powrót do punktu kontrolnego.");
+                if(game.Recoveries>before) game.Thoughts.Say(ThoughtCue.RatEscape);
+            }
         }
     }
 }

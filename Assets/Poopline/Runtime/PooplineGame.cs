@@ -6,7 +6,7 @@ namespace Poopline
     [DisallowMultipleComponent]
     public sealed class PooplineGame : MonoBehaviour
     {
-        public const int LayoutVersion=9;
+        public const int LayoutVersion=10;
         public int layoutVersion;
         public Transform menuBackdrop;
         public static readonly Vector3 MenuFocus=new Vector3(-39,1,1);
@@ -20,6 +20,7 @@ namespace Poopline
         public Camera GameCamera {get;private set;}
         public SewerAudio Sound {get;private set;}
         public SewerSettings Settings {get;private set;}
+        public PlayerThoughts Thoughts {get;private set;}
         public SluicePuzzle Sluice {get;private set;}
         public int LevelIndex {get;private set;}
         public SewerLevel CurrentLevel=>Levels[LevelIndex];
@@ -45,25 +46,13 @@ namespace Poopline
         public float[] StageTimes {get;private set;}
         public int Recoveries {get;private set;}
         public Vector3 Spawn=>CheckpointReached?CurrentLevel.checkpoints[CheckpointIndex]:CurrentLevel.start;
-        public string Objective
-        {
-            get
-            {
-                if(LevelIndex==0 && Sluice!=null)
-                {
-                    if(Sluice.Solved) return Sluice.IsOpen?"Przejdź przez osuszoną komorę.":"Woda opada. Odpływ odsłania przejście.";
-                    if(Sluice.Seen) return "Znajdź zawór przy starych pompach.";
-                }
-                return CurrentLevel.objectives[Mathf.Clamp(CheckpointIndex+1,0,CurrentLevel.objectives.Length-1)];
-            }
-        }
         private ExplorationMap[] maps;
         private JourneyRecord savedGame;
         private float protectedUntil,transitionRemaining,nextSave;
         private int previousFrameRate;
         private void Awake()
         {
-            Input=new RunnerInput();Settings=new SewerSettings();
+            Input=new RunnerInput();Settings=new SewerSettings();Thoughts=new PlayerThoughts();
             Player=GetComponentInChildren<SewerPlayer>(true);Levels=GetComponentsInChildren<SewerLevel>(true);
             GameCamera=GetComponentInChildren<Camera>();Sound=GetComponent<SewerAudio>();
             previousFrameRate=Application.targetFrameRate;Application.targetFrameRate=60;
@@ -102,21 +91,21 @@ namespace Poopline
                 if(transitionRemaining<=0) {ConfigureLevel(LevelIndex+1,-1);SaveProgress(true);}
                 return;
             }
-            Elapsed+=Time.deltaTime;LevelElapsed+=Time.deltaTime;
+            Thoughts.Tick(Time.deltaTime);Elapsed+=Time.deltaTime;LevelElapsed+=Time.deltaTime;
             Vector3 p=Player.transform.position;Map.Discover(p);
             for(int i=CheckpointIndex+1;i<CurrentLevel.checkpoints.Length;i++)
             {
                 if(Vector3.Distance(p,CurrentLevel.checkpoints[i])>1.5f) continue;
-                CheckpointIndex=i;SaveProgress(true);ShowNotice("Punkt kontrolny · "+Objective,5);break;
+                CheckpointIndex=i;SaveProgress(true);break;
             }
             if(Time.unscaledTime>=nextSave) {SaveProgress();nextSave=Time.unscaledTime+3;}
             if(!CurrentLevel.ContainsPlayer(p)) {Recover("Wracasz na ostatni bezpieczny pomost.");return;}
             if(!CurrentLevel.ContainsExit(p) || (LevelIndex==0 && !Sluice.IsOpen)) return;
-            StageTimes[LevelIndex]=LevelElapsed;Player.StopMotion();
+            StageTimes[LevelIndex]=LevelElapsed;Player.StopMotion();Thoughts.Clear();
             if(LevelIndex+1<Levels.Length) {Transitioning=true;transitionRemaining=1.4f;SaveProgress();}
             else {Completed=true;SaveProgress(true);}
         }
-        private void ConfigureLevel(int index,int checkpoint)
+        private void ConfigureLevel(int index,int checkpoint,bool introduce=true)
         {
             LevelIndex=index;CheckpointIndex=checkpoint;
             InMainMenu=false;menuBackdrop.gameObject.SetActive(false);Player.gameObject.SetActive(true);
@@ -126,7 +115,8 @@ namespace Poopline
             foreach(var rat in Rats) {rat.Initialize(this);rat.ResetPatrol();}
             Paused=Completed=Transitioning=MapOpen=false;Page=MenuPage.Home;LevelElapsed=0;
             protectedUntil=Time.time+1.5f;Player.ResetAt(Spawn);Map.Discover(Spawn,true);
-            GameCamera.GetComponent<SewerCamera>().Snap();ShowNotice(CurrentLevel.introduction,7);
+            GameCamera.GetComponent<SewerCamera>().Snap();Thoughts.Clear();NoticeUntil=0;
+            if(introduce) Thoughts.Say(index==0?ThoughtCue.EnterCanal:ThoughtCue.EnterBridges);
         }
         public void RequestNewGame() {if(savedGame!=null) Page=MenuPage.NewGame;else StartNewGame();Sound.PlayClick();}
         public void StartNewGame()
@@ -139,15 +129,15 @@ namespace Poopline
         {
             if(!CanContinue) return;
             JourneyRecord record=savedGame;
-            Sluice.Restore(record.sluiceSolved,record.sluiceSeen);
+            Sluice.Restore(record.sluiceSolved,record.sluiceSeen,record.sluiceHintStep,record.sluiceHintElapsed,record.sluiceValveFound);
             for(int i=0;i<maps.Length;i++) maps[i].Restore(record.maps[i]);
-            HasSession=true;ConfigureLevel(record.level,record.checkpoint);
+            HasSession=true;ConfigureLevel(record.level,record.checkpoint,false);
             Elapsed=record.elapsed;LevelElapsed=record.levelElapsed;StageTimes=(float[])record.stageTimes.Clone();
             ShowNotice("Wracasz do ostatniego punktu kontrolnego.",4);
         }
         private void ShowMainMenu()
         {
-            InMainMenu=true;Page=MenuPage.Home;Paused=MapOpen=false;Player.StopMotion();
+            InMainMenu=true;Page=MenuPage.Home;Paused=MapOpen=false;Player.StopMotion();Thoughts.Clear();
             Player.gameObject.SetActive(false);foreach(var level in Levels) level.gameObject.SetActive(false);
             menuBackdrop.gameObject.SetActive(true);GameCamera.GetComponent<SewerCamera>().Snap();
         }
@@ -157,7 +147,7 @@ namespace Poopline
         public void SaveProgress(bool notify=false)
         {
             if(!HasSession) return;
-            var record=new JourneyRecord{level=LevelIndex,checkpoint=CheckpointIndex,sluiceSolved=Sluice.Solved,sluiceSeen=Sluice.Seen,completed=Completed,elapsed=Elapsed,levelElapsed=LevelElapsed,stageTimes=(float[])StageTimes.Clone(),maps=new string[maps.Length],savedAt=System.DateTime.UtcNow.ToString("o")};
+            var record=new JourneyRecord{level=LevelIndex,checkpoint=CheckpointIndex,sluiceSolved=Sluice.Solved,sluiceSeen=Sluice.Seen,sluiceHintStep=Sluice.HintStep,sluiceHintElapsed=Sluice.HintElapsed,sluiceValveFound=Sluice.ValveFound,completed=Completed,elapsed=Elapsed,levelElapsed=LevelElapsed,stageTimes=(float[])StageTimes.Clone(),maps=new string[maps.Length],savedAt=System.DateTime.UtcNow.ToString("o")};
             for(int i=0;i<maps.Length;i++) {maps[i].Save();record.maps[i]=maps[i].Export();}
             JourneySave.Write(record,Levels);savedGame=record;
             if(notify) SavedUntil=Time.unscaledTime+2.8f;

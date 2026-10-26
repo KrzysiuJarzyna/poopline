@@ -79,7 +79,7 @@ namespace Poopline
                 if(Button(y+182,"Ustawienia")) game.OpenPanel(MenuPage.Settings);
                 if(Button(y+241,"Zapisz i wróć do menu")) game.ReturnToMenu();
             }
-            GUI.Label(new Rect(82,655,460,35),"0.6  /  POD KAMIENICAMI + ŻELIWNE MOSTY",hint);
+            GUI.Label(new Rect(82,655,460,35),"0.6.2  /  POD KAMIENICAMI + ŻELIWNE MOSTY",hint);
             GUI.Label(new Rect(900,655,315,35),game.InMainMenu?"POLSKA. GDZIEŚ POD TWOJĄ ULICĄ.":"Postęp zapisuje się automatycznie.",hint);
         }
     }

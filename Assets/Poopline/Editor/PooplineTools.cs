@@ -68,7 +68,7 @@ namespace Poopline.Editor
             EditorSceneManager.SaveScene(scene,ScenePath);
             EditorBuildSettings.scenes=new[]{new EditorBuildSettingsScene(ScenePath,true)};
             EditorSceneManager.playModeStartScene=null;
-            PlayerSettings.bundleVersion="0.6.0";
+            PlayerSettings.bundleVersion="0.6.2";
             AssetDatabase.SaveAssets();
             if(SceneView.lastActiveSceneView!=null)
             {
@@ -77,7 +77,7 @@ namespace Poopline.Editor
                 SceneView.lastActiveSceneView.Repaint();
             }
             Selection.activeGameObject=null;
-            Debug.Log("POOPLINE_06_SCENE_READY");
+            Debug.Log("POOPLINE_062_SCENE_READY");
         }
         [MenuItem("Tools/Poopline/Validate playable canal",priority=20)]
         public static void ValidateProject()
@@ -100,7 +100,7 @@ namespace Poopline.Editor
                 throw new InvalidOperationException("World-space labels are not allowed.");
             foreach(var child in game.GetComponentsInChildren<Transform>(true))
                 if(GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(child.gameObject)!=0) throw new InvalidOperationException("Missing script: "+child.name);
-            Debug.Log("POOPLINE_06_VALIDATED");
+            Debug.Log("POOPLINE_062_VALIDATED");
         }
     }
 }
