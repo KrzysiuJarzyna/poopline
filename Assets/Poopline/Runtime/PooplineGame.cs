@@ -5,198 +5,130 @@ namespace Poopline
     [DisallowMultipleComponent]
     public sealed class PooplineGame : MonoBehaviour
     {
-        [UnityEngine.Serialization.FormerlySerializedAs("forwardSpeed")]
-        [SerializeField, Range(3, 7)] private float moveSpeed = 5;
-        [SerializeField, Range(9, 14)] private float jumpSpeed = 11;
-        public float MoveSpeed => moveSpeed;
-        public int SelectedCityIndex { get; private set; }
-        public SewerCity CurrentCity => CityCatalog.All[SelectedCityIndex];
-        public float[] Hazards => world.HazardPositions;
-        public float JumpSpeed => jumpSpeed;
-        public RunState State { get; } = new RunState();
+        public const int LayoutVersion = 7;
+        public int layoutVersion;
+        public SewerPlayer Player { get; private set; }
         public RunnerInput Input { get; private set; }
-        public RunnerBody Player { get; private set; }
-        public int TotalCoins => world.CoinCount;
-        public int BestCoins { get; private set; }
-        public bool Muted { get; private set; }
-        public float Progress => Player == null ? 0 : Mathf.Clamp01((Player.Position.x - 2) / (SewerWorld.FinishX - 2));
-        private SewerWorld world;
-        private RunnerHud hud;
-        private Camera gameCamera;
-        private AudioSource sound;
-        private AudioClip tone;
+        public FlowVolume[] Flows { get; private set; }
+        public SewerLadder[] Ladders { get; private set; }
+        public RatPatrol[] Rats { get; private set; }
+        public ElevatedWalkway[] Decks { get; private set; }
+        public SewerLevel[] Levels { get; private set; }
+        public Camera GameCamera { get; private set; }
+        public int LevelIndex { get; private set; }
+        public SewerLevel CurrentLevel => Levels[LevelIndex];
+        public int CheckpointIndex { get; private set; } = -1;
+        public bool CheckpointReached => CheckpointIndex >= 0;
+        public bool Paused { get; private set; }
+        public bool Completed { get; private set; }
+        public bool Transitioning { get; private set; }
+        public bool Frozen => Paused || Completed || Transitioning;
+        public string Notice { get; private set; }
+        public float NoticeUntil { get; private set; }
+        public float Elapsed { get; private set; }
+        public float LevelElapsed { get; private set; }
+        public float[] StageTimes { get; private set; }
+        public int Recoveries { get; private set; }
+        public Vector3 Spawn => CheckpointReached ? CurrentLevel.checkpoints[CheckpointIndex] : CurrentLevel.start;
+        public string Objective => CurrentLevel.objectives[Mathf.Clamp(CheckpointIndex + 1, 0, CurrentLevel.objectives.Length - 1)];
+        private float protectedUntil, transitionRemaining;
         private int previousFrameRate;
-        private bool mapAxisHeld;
-        private float cameraLookAhead;
 
         private void Awake()
         {
+            Input = new RunnerInput();
+            Player = GetComponentInChildren<SewerPlayer>();
+            Levels = GetComponentsInChildren<SewerLevel>(true);
+            GameCamera = GetComponentInChildren<Camera>();
             previousFrameRate = Application.targetFrameRate;
             Application.targetFrameRate = 60;
-            Input = new RunnerInput();
-            SelectedCityIndex = CityCatalog.FindIndex(PlayerPrefs.GetString("Poopline.SelectedCity.v2", "mielec"));
-            BestCoins = PlayerPrefs.GetInt(CurrentCity.BestKey, 0);
-            Muted = PlayerPrefs.GetInt("Poopline.Muted.v1", 0) != 0;
-            world = new SewerWorld(transform, CurrentCity);
-            Player = world.CreatePlayer(this);
-            var cameraObject = new GameObject("Poopline Camera", typeof(Camera), typeof(AudioListener));
-            cameraObject.transform.SetParent(transform, false);
-            cameraObject.tag = "MainCamera";
-            gameCamera = cameraObject.GetComponent<Camera>();
-            gameCamera.orthographic = true;
-            gameCamera.clearFlags = CameraClearFlags.SolidColor;
-            gameCamera.backgroundColor = new Color32(15, 30, 37, 255);
-            gameCamera.nearClipPlane = 0.1f;
-            gameCamera.farClipPlane = 60;
-            sound = gameObject.AddComponent<AudioSource>();
-            sound.playOnAwake = false;
-            sound.volume = 0.15f;
-            tone = CreateTone();
-            hud = gameObject.AddComponent<RunnerHud>();
-            hud.Initialize(this);
-            UpdateCamera();
-        }
-
-        private static AudioClip CreateTone()
-        {
-            const int sampleRate = 22050;
-            var samples = new float[sampleRate / 8];
-            for (int i = 0; i < samples.Length; i++)
-                samples[i] = Mathf.Sin(2 * Mathf.PI * 440 * i / sampleRate) * Mathf.Sin(Mathf.PI * i / samples.Length) * 0.3f;
-            var clip = AudioClip.Create("Poopline soft tone", samples.Length, 1, sampleRate, false);
-            clip.SetData(samples, 0);
-            return clip;
+            if (Player == null || GameCamera == null || Levels.Length != 2)
+            { Debug.LogError("Open Tools > Poopline > Rebuild playable canal before Play."); enabled = false; return; }
+            StageTimes = new float[Levels.Length];
+            Player.Initialize(this);
+            GameCamera.GetComponent<SewerCamera>().Initialize(this);
+            GetComponent<RunnerHud>().Initialize(this);
+            // Cache original lamp values once, including the inactive second stage.
+            GetComponent<SewerLighting>().Initialize(this);
+            RestartJourney();
         }
 
         private void Update()
         {
-            State.Tick(Time.deltaTime);
-            if (State.Phase == RunPhase.CityMap)
+            if (Input.RetryPressed) { Restart(); return; }
+            if (Input.PausePressed && !Completed) TogglePause();
+            if (Paused || Completed) return;
+            if (Transitioning)
             {
-                float axis = Input.Horizontal;
-                if (!mapAxisHeld && Mathf.Abs(axis) > 0.5f)
-                    SelectCity((SelectedCityIndex + (axis > 0 ? 1 : CityCatalog.All.Length - 1)) % CityCatalog.All.Length);
-                mapAxisHeld = Mathf.Abs(axis) > 0.2f;
-                if (Input.AcceptPressed) PrimaryAction();
+                transitionRemaining -= Time.deltaTime;
+                if (transitionRemaining <= 0) StartLevel(LevelIndex + 1);
                 return;
             }
-            if (Input.PausePressed) TogglePause();
-            else if (Input.RetryPressed) Restart();
-            else if (Input.AcceptPressed) PrimaryAction();
-        }
-
-        private void LateUpdate() { UpdateCamera(); }
-        private void UpdateCamera()
-        {
-            gameCamera.orthographicSize = Mathf.Max(4.4f, 5.6f / Mathf.Max(0.25f, gameCamera.aspect));
-            cameraLookAhead = Mathf.MoveTowards(cameraLookAhead, Input.Horizontal * 1.6f, Time.deltaTime * 5);
-            gameCamera.transform.position = new Vector3(Player.transform.position.x + cameraLookAhead, 2.4f, -10);
-        }
-
-        public void PrimaryAction()
-        {
-            switch (State.Phase)
+            Elapsed += Time.deltaTime;
+            LevelElapsed += Time.deltaTime;
+            Vector3 p = Player.transform.position;
+            for (int i = CheckpointIndex + 1; i < CurrentLevel.checkpoints.Length; i++)
             {
-                case RunPhase.CityMap: StartSelectedCity(); break;
-                case RunPhase.Ready: State.Start(); Player.SetRunning(true); break;
-                case RunPhase.Playing: Player.QueueJump(); break;
-                case RunPhase.Paused: TogglePause(); break;
-                default: Restart(); break;
+                if (Vector3.Distance(p, CurrentLevel.checkpoints[i]) > 2) continue;
+                CheckpointIndex = i;
+                ShowNotice("Punkt kontrolny · " + Objective, 5);
+                break;
             }
+            if (!CurrentLevel.ContainsPlayer(p)) { Recover("Wracasz na ostatni bezpieczny pomost."); return; }
+            if (!CurrentLevel.ContainsExit(p)) return;
+            StageTimes[LevelIndex] = LevelElapsed;
+            Player.StopMotion();
+            if (LevelIndex + 1 < Levels.Length)
+            { Transitioning = true; transitionRemaining = 1.4f; }
+            else Completed = true;
         }
 
-        public void TogglePause()
+        private void StartLevel(int index)
         {
-            if (State.Phase == RunPhase.Playing) { State.Pause(); Input.ClearTouch(); Player.SetRunning(false); }
-            else if (State.Phase == RunPhase.Paused) { State.Resume(); Player.SetRunning(true); }
+            LevelIndex = index;
+            for (int i = 0; i < Levels.Length; i++) Levels[i].gameObject.SetActive(i == index);
+            Flows = CurrentLevel.GetComponentsInChildren<FlowVolume>();
+            Ladders = CurrentLevel.GetComponentsInChildren<SewerLadder>();
+            Decks = CurrentLevel.GetComponentsInChildren<ElevatedWalkway>();
+            Rats = CurrentLevel.GetComponentsInChildren<RatPatrol>();
+            foreach (var rat in Rats) { rat.Initialize(this); rat.ResetPatrol(); }
+            CheckpointIndex = -1;
+            Paused = Completed = Transitioning = false;
+            LevelElapsed = 0;
+            protectedUntil = Time.time + 1.5f;
+            Player.ResetAt(Spawn);
+            GameCamera.GetComponent<SewerCamera>().Snap();
+            ShowNotice(CurrentLevel.introduction, 7);
         }
 
+        public void TogglePause() { Paused = !Paused; Player.StopMotion(); }
         public void Restart()
         {
-            if (State.Phase == RunPhase.CityMap) return;
-            Input.ClearTouch();
-            State.Reset();
-            world.ResetCoins();
-            Player.ResetPosition();
-            UpdateCamera();
-            PrimaryAction();
+            if (Completed) { RestartJourney(); return; }
+            Elapsed -= LevelElapsed;
+            StageTimes[LevelIndex] = 0;
+            StartLevel(LevelIndex);
         }
-
-        public void SelectCity(int index)
+        public void RestartJourney()
         {
-            if (State.Phase != RunPhase.CityMap || index < 0 || index >= CityCatalog.All.Length) return;
-            SelectedCityIndex = index;
-            BestCoins = PlayerPrefs.GetInt(CurrentCity.BestKey, 0);
+            Elapsed = 0; Recoveries = 0;
+            System.Array.Clear(StageTimes, 0, StageTimes.Length);
+            StartLevel(0);
         }
-
-        private void StartSelectedCity()
+        public void Recover(string message)
         {
-            Input.ClearTouch();
-            world.Dispose();
-            world = new SewerWorld(transform, CurrentCity);
-            Player = world.CreatePlayer(this);
-            State.Reset();
-            State.Start();
-            Player.SetRunning(true);
-            cameraLookAhead = 0;
-            PlayerPrefs.SetString("Poopline.SelectedCity.v2", CurrentCity.Id);
-            PlayerPrefs.Save();
-            UpdateCamera();
+            if (Frozen || Time.time < protectedUntil) return;
+            Recoveries++;
+            Player.ResetAt(Spawn);
+            foreach (var rat in Rats) rat.ResetPatrol();
+            protectedUntil = Time.time + 2;
+            GameCamera.GetComponent<SewerCamera>().Snap();
+            ShowNotice(message, 4);
         }
-
-        public void ReturnToMap()
-        {
-            Input.ClearTouch();
-            Player.SetRunning(false);
-            State.ShowMap();
-            mapAxisHeld = Mathf.Abs(Input.Horizontal) > 0.2f;
-        }
-
-        public void CollectCoin() { State.Collect(); PlayTone(1.6f); }
-        public void PlayJumpSound() { PlayTone(0.9f); }
-        private void PlayTone(float pitch)
-        {
-            if (Muted) return;
-            sound.pitch = pitch;
-            sound.PlayOneShot(tone);
-        }
-
-        public void Finish(bool won)
-        {
-            if (State.Phase != RunPhase.Playing) return;
-            if (won) State.Win(); else State.Lose();
-            Player.SetRunning(false);
-            Input.ClearTouch();
-            PlayTone(won ? 2 : 0.45f);
-            if (won && State.Coins > BestCoins)
-            {
-                BestCoins = State.Coins;
-                PlayerPrefs.SetInt(CurrentCity.BestKey, BestCoins);
-                PlayerPrefs.Save();
-            }
-        }
-
-        public void ToggleSound()
-        {
-            Muted = !Muted;
-            sound.Stop();
-            PlayerPrefs.SetInt("Poopline.Muted.v1", Muted ? 1 : 0);
-            PlayerPrefs.Save();
-        }
-
-        private void OnApplicationPause(bool paused) { if (paused) PauseForInterruption(); }
-        private void OnApplicationFocus(bool focused) { if (!focused) PauseForInterruption(); }
-        private void PauseForInterruption()
-        {
-            if (State.Phase == RunPhase.Playing) TogglePause();
-        }
-
-        private void OnDestroy()
-        {
-            Input?.Dispose();
-            world?.Dispose();
-            if (tone != null) Destroy(tone);
-            Application.targetFrameRate = previousFrameRate;
-        }
+        public void ShowNotice(string message, float duration) { Notice = message; NoticeUntil = Time.unscaledTime + duration; }
+        private void OnApplicationFocus(bool focused)
+        { if (!focused && Player != null && !Paused && !Completed) TogglePause(); }
+        private void OnApplicationPause(bool paused) { if (paused) OnApplicationFocus(false); }
+        private void OnDestroy() { Input?.Dispose(); Application.targetFrameRate = previousFrameRate; }
     }
 }

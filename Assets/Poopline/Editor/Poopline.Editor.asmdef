@@ -1,6 +1,12 @@
 {
     "name": "Poopline.Editor",
     "rootNamespace": "Poopline.Editor",
-    "references": ["Poopline.Runtime"],
-    "includePlatforms": ["Editor"]
+    "references": [
+        "Poopline.Runtime",
+        "UnityEditor.TestRunner",
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ]
 }

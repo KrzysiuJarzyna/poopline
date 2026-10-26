@@ -1,58 +1,92 @@
 using System;
 using System.IO;
 using UnityEditor;
-using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
 
 namespace Poopline.Editor
 {
     public static class PooplineTools
     {
         public const string ScenePath = "Assets/Poopline/Scenes/Poopline.unity";
-
-        [MenuItem("Tools/Poopline/Open playable game", priority = 0)]
+        [MenuItem("Tools/Poopline/Open playable canal",priority=0)]
         public static void OpenGame()
         {
-            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            if(!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             EditorSceneManager.OpenScene(ScenePath);
-            EditorSceneManager.playModeStartScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath);
+            EditorSceneManager.playModeStartScene=null;
         }
-
-        [MenuItem("Tools/Poopline/Build macOS prototype", priority = 20)]
-        public static void BuildMac()
+        [MenuItem("Tools/Poopline/Rebuild playable canal",priority=10)]
+        public static void Rebuild()
         {
-            if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
-            ValidateProject();
-            const string target = "Builds/macOS/Poopline.app";
-            Directory.CreateDirectory("Builds/macOS");
-            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
-                scenes = new[] { ScenePath }, locationPathName = target,
-                target = BuildTarget.StandaloneOSX, options = BuildOptions.Development
-            });
-            if (report.summary.result != BuildResult.Succeeded)
-                throw new InvalidOperationException("Poopline build failed: " + report.summary.result);
-            Debug.Log("Poopline build ready: " + Path.GetFullPath(target));
+            if(EditorApplication.isPlayingOrWillChangePlaymode) return;
+            if(!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            var scene=EditorSceneManager.NewScene(NewSceneSetup.EmptyScene,NewSceneMode.Single);
+            Directory.CreateDirectory("Assets/Poopline/Materials");
+            AssetDatabase.Refresh();
+            var materials=new Material[SewerWorld.MaterialNames.Length];
+            for(int i=0;i<materials.Length;i++)
+            {
+                string path="Assets/Poopline/Materials/"+SewerWorld.MaterialNames[i]+".mat";
+                var m=AssetDatabase.LoadAssetAtPath<Material>(path);
+                if(m==null) { m=new Material(Shader.Find("Universal Render Pipeline/Lit"));AssetDatabase.CreateAsset(m,path); }
+                m.SetColor("_BaseColor",SewerWorld.Colors[i]);m.SetFloat("_Smoothness",i==5?.72f:.23f);
+                if(i==10)
+                {m.EnableKeyword("_EMISSION");m.SetColor("_EmissionColor",SewerWorld.Colors[i]*.8f);}
+                else {m.DisableKeyword("_EMISSION");m.SetColor("_EmissionColor",Color.black);}
+                EditorUtility.SetDirty(m);materials[i]=m;
+            }
+            var root=new GameObject("Poopline");root.AddComponent<PooplineGame>().layoutVersion=PooplineGame.LayoutVersion;
+            root.AddComponent<RunnerHud>();root.AddComponent<SewerLighting>();SewerWorld.Build(root.transform,materials);
+            RenderSettings.ambientMode=AmbientMode.Flat;
+            RenderSettings.ambientLight=Color.black;
+            RenderSettings.ambientIntensity=0;
+            RenderSettings.reflectionIntensity=0;
+            RenderSettings.skybox=null;
+            RenderSettings.fog=false;
+            // The long channel meshes must receive the phone as well as all nearby lamps.
+            var renderer=AssetDatabase.LoadAssetAtPath<UniversalRendererData>("Assets/Poopline/Settings/URP_ForwardRenderer.asset");
+            renderer.renderingMode=RenderingMode.ForwardPlus;
+            EditorUtility.SetDirty(renderer);
+            foreach(var light in root.GetComponentsInChildren<Light>(true))
+            {
+                if(light.shadows==LightShadows.None) continue;
+                var data=new SerializedObject(light.GetUniversalAdditionalLightData());
+                data.FindProperty("m_AdditionalLightsShadowResolutionTier").intValue=light.type==LightType.Spot?2:0;
+                data.ApplyModifiedPropertiesWithoutUndo();
+            }
+            EditorSceneManager.SaveScene(scene,ScenePath);
+            EditorBuildSettings.scenes=new[]{new EditorBuildSettingsScene(ScenePath,true)};
+            EditorSceneManager.playModeStartScene=null;
+            PlayerSettings.bundleVersion="0.4.0";
+            AssetDatabase.SaveAssets();
+            if(SceneView.lastActiveSceneView!=null)
+            {
+                SceneView.lastActiveSceneView.in2DMode=false;
+                SceneView.lastActiveSceneView.LookAt(new Vector3(14,1,0),Quaternion.Euler(40,0,0),22,true);
+                SceneView.lastActiveSceneView.Repaint();
+            }
+            Selection.activeGameObject=null;
+            Debug.Log("POOPLINE_04_SCENE_READY");
         }
-
-        // Can also be invoked with -executeMethod Poopline.Editor.PooplineTools.ValidateProject.
+        [MenuItem("Tools/Poopline/Validate playable canal",priority=20)]
         public static void ValidateProject()
         {
-            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) == null)
-                throw new InvalidOperationException("Missing Poopline scene.");
-            var scene = EditorSceneManager.OpenScene(ScenePath);
-            int games = 0;
-            foreach (var root in scene.GetRootGameObjects())
-            {
-                games += root.GetComponentsInChildren<PooplineGame>(true).Length;
-                foreach (var child in root.GetComponentsInChildren<Transform>(true))
-                    if (GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(child.gameObject) != 0)
-                        throw new InvalidOperationException("Missing script on " + child.name);
-            }
-            if (games != 1) throw new InvalidOperationException("Scene must have exactly one PooplineGame.");
-            if (EditorBuildSettings.scenes.Length != 1 || EditorBuildSettings.scenes[0].path != ScenePath || !EditorBuildSettings.scenes[0].enabled)
-                throw new InvalidOperationException("Build scene list must start with Poopline.");
-            Debug.Log("POOPLINE_PROJECT_VALIDATED");
+            var game=UnityEngine.Object.FindAnyObjectByType<PooplineGame>();
+            if(game==null || game.layoutVersion!=PooplineGame.LayoutVersion) throw new InvalidOperationException("Missing two-stage scene.");
+            var stages=game.GetComponentsInChildren<SewerLevel>(true);
+            if(stages.Length!=2 || game.GetComponentsInChildren<SewerPlayer>().Length!=1)
+                throw new InvalidOperationException("Incomplete campaign.");
+            if(stages[0].GetComponentsInChildren<RatPatrol>(true).Length!=0 || stages[1].GetComponentsInChildren<RatPatrol>(true).Length!=5 || stages[1].GetComponentsInChildren<SewerLadder>(true).Length!=6)
+                throw new InvalidOperationException("Incorrect stage encounters.");
+            if(game.GetComponentsInChildren<TextMesh>(true).Length!=0)
+                throw new InvalidOperationException("World-space labels are not allowed.");
+            foreach(var child in game.GetComponentsInChildren<Transform>(true))
+                if(GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(child.gameObject)!=0) throw new InvalidOperationException("Missing script: "+child.name);
+            Debug.Log("POOPLINE_04_VALIDATED");
         }
     }
 }

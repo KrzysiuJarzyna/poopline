@@ -1,73 +1,63 @@
-# Poopline — pierwszy grywalny szkic
+# Poopline 0.4 — dwa etapy pod miastem
 
-Platformówka 2D z ręcznym sterowaniem: bohater inspirowany emoji kupy przemierza kanały pod wybranym polskim miastem. Możesz iść w lewo i w prawo, zatrzymać się, zawrócić i skakać. Celem jest dotarcie do oczyszczalni. Bąbelki są opcjonalnymi punktami; nie ma limitu czasu.
+Grywalna przygodowa gra 3D ze stałą kamerą. Człowiek z telefonem przechodzi przez stare miejskie kanały, brodzi w nurcie i szuka drogi między pomostami. Polski klimat podziemi kamienic: ceglane sklepienia, betonowe płyty, żeliwne kraty, rury ciepłownicze i ciepłe lampy w mroku. Nie ma walki ani swobodnego skoku.
 
-To podstawa do sprawdzenia mechaniki, z tymczasową grafiką. Nie przesądza o finalnym bohaterze, stylu ani fabule.
+## Uruchomienie
 
-## Uruchomienie w Unity
+1. Otwórz projekt w Unity Hub, używając **Unity 6000.5.1f1**.
+2. Wybierz **Tools → Poopline → Open playable canal**.
+3. Kliknij **Play**, a następnie okno **Game**, żeby kierować postacią.
 
-1. Otwórz ten folder przez Unity Hub w **Unity 6000.5.1f1**.
-2. Poczekaj na import i kompilację.
-3. Wybierz **Tools → Poopline → Open playable game**.
-4. Kliknij **Play**, wybierz miasto na mapie i kliknij **WEJDŹ DO KANAŁÓW** w oknie **Game**. Jeżeli widzisz tylko Scene, otwórz **Window → General → Game**.
+Gra zaczyna pierwszy etap od razu. Przejście przez końcowy boczny kanał uruchamia drugi etap po krótkim wygaszeniu obrazu. Drugi kończy się ekranem ukończenia obu poziomów. Nie ma trzeciego etapu.
 
-Scena startowa: `Assets/Poopline/Scenes/Poopline.unity`. Jest jedyną sceną na liście budowania. Menu „Open playable game” ustawia ją także jako scenę uruchamianą przyciskiem Play.
+## Poziomy
 
-W trybie edycji scena zawiera obiekt `Poopline`. Poziom, postać, kamera i interfejs powstają po uruchomieniu gry. To celowe: szkic nie wymaga ręcznego podpinania obiektów. Parametry prędkości i skoku są na tym obiekcie w Inspectorze; układ poziomu jest w `SewerWorld.cs`.
+**01 — Pod kamienicami.** Spokojne poznawanie chodzenia, telefonu, brodzenia, nurtu i wychodzenia z wody. Cztery odcinki kolektora połączone wąskimi kanałami, otwarte komory boczne, przecieki i niskie mostki. Zamknięte fragmenty chodnika zachęcają do wejścia do wody. Bez przeciwników. Projektowane na około trzy minuty pierwszego przejścia; eksploracja i tempo gracza zmieniają czas.
 
-## Wybór miasta
+**02 — Żeliwne mosty.** Dłuższa droga z trzema górnymi obejściami, sześcioma drabinami i pięcioma patrolującymi szczurami. Można wybierać drogę górą, wodą lub wolnym chodnikiem. Boczne odnogi, galerie pomp i zmiany kierunku utrudniają orientację. Kontakt ze szczurem odsyła do ostatniego punktu kontrolnego w bieżącym etapie.
 
-Gra zaczyna się od mapy Polski z sześcioma miastami wymienionymi w założeniach: **Mielec, Poznań, Warszawa, Wrocław, Kraków i Gdańsk**. Kliknij znacznik lub nazwę miasta, następnie wejdź do kanałów. Klawiatura i pad pozwalają zmieniać wybór w lewo/prawo i zatwierdzić przyciskiem skoku.
-
-Każde miasto ma kolorystykę, oznaczenie kanału, wariant rozmieszczenia przeszkód i osobny rekord. Na tym etapie sześć wariantów korzysta ze wspólnego układu chodników; nie są odwzorowaniem rzeczywistych sieci kanalizacyjnych. Do mapy można wrócić przyciskiem **MAPA** lub **ZMIEŃ MIASTO**. Powrót kończy bieżącą próbę.
-
-Mapa działa offline, bez konta, API i dostępu do lokalizacji. Źródło uproszczonego obrysu Polski opisano w `MAP_SOURCES.md`. Dodawanie kolejnych miast: `CityCatalog.cs`.
+Każdy poziom ma trzy punkty kontrolne przy wejściach do kolejnych odcinków. Nie trzeba ich ręcznie aktywować. Stan nie jest zapisywany po zamknięciu gry.
 
 ## Sterowanie
 
-| Czynność | Klawiatura | Telefon / mysz | Pad |
-| --- | --- | --- | --- |
-| Wybór miasta | A/D lub lewo/prawo | znacznik lub nazwa na mapie | drążek lub D-pad |
-| Ruch | A/D lub lewo/prawo | przytrzymaj **<** lub **>** | drążek lub D-pad |
-| Start / ponów / wznowienie | Spacja lub Enter | przycisk na ekranie | dolny przycisk, np. A |
-| Skok | Spacja, W lub strzałka w górę | dotknięcie **SKOK** | dolny przycisk |
-| Pauza / wznowienie | Escape | **PAUZA** / **WRACAMY** | Start |
-| Od początku | R | przycisk po przegranej lub w pauzie | górny przycisk, np. Y |
-| Dźwięk | przycisk na ekranie | przycisk na ekranie | mysz / dotyk |
-
-Postać stoi, gdy nie trzymasz kierunku. Można jednocześnie przytrzymywać kierunek i dotknąć skoku drugim palcem. Puszczenie przycisku, zsunięcie palca, pauza i powrót do mapy zwalniają dotykowe sterowanie. Skok ma krótki bufor wejścia i tolerancję po zejściu z krawędzi. Nie ma podwójnego skoku. Dotknięcie przeszkody lub wpadnięcie do ścieków kończy próbę; restart jest natychmiastowy. Powrót z tła wymaga świadomego wznowienia. Największa liczba bąbelków w ukończonej próbie jest zapisywana oddzielnie dla każdego miasta. Zapisywane są również ostatnie wybrane miasto i ustawienie dźwięku.
-
-## Gdzie pracować
-
-| Miejsce | Zawartość |
+| Czynność | Klawisze |
 | --- | --- |
-| `Assets/Poopline/Runtime` | aktualna gra, zasady, fizyka, sterowanie, UI i generowanie poziomu |
-| `Assets/Poopline/Scenes` | aktualna scena startowa |
-| `Assets/Poopline/Settings` | używane ustawienia renderowania URP |
-| `Assets/Poopline/Editor` | otwieranie gry, sprawdzanie sceny i budowanie macOS |
-| `Assets/Poopline/Tests/PlayMode` | testy przebiegu gry w silniku Unity |
+| Chodzenie / brodzenie | WASD lub strzałki |
+| Drabina ustawiona przodem — wejście / zejście | W/↑ lub S/↓ |
+| Drabina boczna — wejście / zejście | A/← lub D/→ |
+| Zatrzymanie na drabinie | Puść kierunek; przeciwny pozwala zawrócić |
+| Pauza / wznowienie | Escape |
+| Restart aktualnego etapu | R |
 
-Cała gra znajduje się w `Assets/Poopline`. Projekt zawiera jedną scenę: `Poopline.unity`, oraz trzy assembly: kod gry, narzędzia edytora i testy. Stare sceny, prototypy, generatory, samouczki i zasoby Platformer Microgame zostały usunięte.
+Drabina chwyta automatycznie przy ruchu zgodnym z jej ustawieniem; nie używa E. Podpowiedź w niebieskim panelu pokazuje właściwy kierunek. Po dotarciu na podest zwolnij kierunek i naciśnij go ponownie, żeby ruszyć dalej.
 
-Sterowanie jest definiowane w `RunnerInput.cs`; interfejs korzysta z domyślnych akcji UI pakietu Input System. Nie ma drugiego zestawu akcji odziedziczonego po szablonie. Zależności Cinemachine, Unity Play, samouczków i Multiplayer Center również usunięto. Pozostały pakiety używane przez grę, renderowanie i narzędzia programistyczne Unity.
+**Z górnych pomostów schodzi się wyłącznie drabinami.** Widoczne poręcze mają kolizje, a kontroler zabezpiecza także krawędzie otworów przy drabinach. Na dolnym chodniku można swobodnie wchodzić do wody i wychodzić na oba brzegi. Nurt znosi postać, ale można iść pod prąd. Górne pomosty pozostają suche.
 
-## Platformy
+Utrata fokusu zatrzymuje rozgrywkę. Powrót do okna nie wznawia jej automatycznie. R restartuje bieżący poziom; przy ekranie ukończenia zaczyna całą podróż od pierwszego.
 
-Kod gry korzysta z Unity Input System i nie wymaga zewnętrznego backendu. Interfejs uwzględnia safe area oraz obrót ekranu. Wspólna scena jest przeznaczona do rozwijania na iOS, Android i desktop.
+## Światło i woda
 
-- **macOS:** `Tools → Poopline → Build macOS prototype` zapisuje lokalną wersję testową w `Builds/macOS/Poopline.app`.
-- **iOS:** doinstaluj iOS Build Support dla tej wersji edytora. W `File → Build Profiles` wybierz iOS; Unity wygeneruje projekt Xcode. Przed testem na urządzeniu ustaw własny Bundle Identifier i podpisywanie w Xcode.
-- **Android:** doinstaluj Android Build Support wraz z SDK/NDK/OpenJDK, a następnie utwórz profil Android. Ustaw własny identyfikator aplikacji przed przygotowaniem wydania.
-- **Windows / Linux:** wymagają odpowiednich modułów i profili budowania. Steam będzie osobnym etapem dystrybucji gotowego wydania desktopowego.
+Scenę oświetlają miejscowe ciepłe lampy oraz chłodny telefon, obracany wraz z postacią. Zachowane są cienie i delikatne odbicie światła pozwalające widzieć bohatera. Nie ma słońca, światła otoczenia ani ogólnego rozjaśnienia kanału. Dalsze odcinki wyłaniają się z mroku po podejściu, również podczas ruchu w bocznych tunelach. Nie ma trwałej pamięci odkrytej mapy. Sklepienia i nadproża zasłaniające postać są chwilowo odsłaniane dla kamery; zachowują kolizje i cienie.
 
-Obecne identyfikatory aplikacji i ustawienia sklepu pochodzą jeszcze z szablonu Unity. Wersja gry to `0.2.0`. Ten szkic nie jest wydaniem przeznaczonym do publikacji w sklepach. Nie dodano reklam, zakupów, logowania, analityki ani integracji Steam.
+Woda przechodzi przez murowane wloty i odpływy za żeliwnymi kratami. Za nimi jest dalszy odcinek wody i spadek do ciemnego kolektora. Boczne kanały są dostępne dla postaci; widać w nich krople z przewodów i kratowane odpływy w podłodze. To animowana geometria i lokalne prądy, bez symulacji hydraulicznej. Instrukcje pozostają wyłącznie w niebieskim interfejsie — w świecie nie ma napisów ani etykiet.
 
-Dokumentacja Unity: [obsługiwane urządzenia wejścia](https://docs.unity.cn/Packages/com.unity.inputsystem%401.19/manual/SupportedDevices.html), [profile i platformy budowania](https://docs.unity.com/en-us/engine/6000.3/manual/building-and-publishing/build-settings/build-profiles-reference).
+## Edycja
 
-## Sprawdzenie i Git
+Scena `Assets/Poopline/Scenes/Poopline.unity` zawiera dwa zwykłe, edytowalne obiekty etapów: `01 — Pod kamienicami` i `02 — Żeliwne mosty`. Pierwszy jest aktywny przy starcie; drugi włącza się po ukończeniu pierwszego. Postać, kamera i interfejs są wspólne. Aby obejrzeć drugi etap przed Play, można tymczasowo przełączyć aktywność obu obiektów w Inspectorze. Play zawsze rozpoczyna od pierwszego etapu.
 
-W Unity otwórz `Window → General → Test Runner`, kartę **PlayMode** i uruchom `Poopline.Tests`. Testy obejmują brak automatycznego biegu, zatrzymanie i cofanie, przegraną na przeszkodzie, punkty, restart, pauzę, klawiaturę, pad, jednoczesny dotyk ruchu i skoku, mapę oraz przejście tras wszystkich sześciu miast na rzeczywistej fizyce. Zdarzenie dotykowe w teście nie zastępuje próby na iPhonie lub Androidzie.
+**Rebuild playable canal** odtwarza oba układy z przepisu i zastępuje ręczne zmiany sceny. Nie jest potrzebne do zwykłego uruchamiania. Kopia układu sprzed rozbudowy znajduje się lokalnie w `Library/PooplineBackups/before-two-levels-20261026.tar.gz`.
 
-Szczegóły wykonanych sprawdzeń i ograniczeń znajdują się w `VALIDATION.md`.
+- `Runtime/PooplineGame.cs`, `SewerLevel.cs` — kolejność etapów, przejścia, punkty kontrolne i restart.
+- `Runtime/SewerPlayer.cs`, `ElevatedWalkway.cs` — ruch, brodzenie, wspinanie i ochrona krawędzi.
+- `Runtime/FlowVolume.cs`, `WaterMotion.cs`, `WaterDrip.cs` — nurty, refleksy i krople.
+- `Runtime/SewerLadder.cs`, `RatPatrol.cs` — drabiny i patrole.
+- `Runtime/SewerCamera.cs`, `SewerLighting.cs`, `SewerCutaway.cs`, `RunnerHud.cs` — kamera, światło i interfejs.
+- `Runtime/SewerWorld.cs` — przepis do tworzenia edytowalnej sceny.
+- `Editor/` — otwieranie, odtwarzanie, walidacja oraz uruchamianie testów.
+- `Tests/PlayMode/PrototypeTests.cs` — sprawdzanie aktualnych zasad i pełnej drogi przez oba poziomy.
 
-Do repozytorium należą `Assets` wraz z plikami `.meta`, `Packages`, `ProjectSettings` i dokumentacja. `Library`, `Temp`, `Logs`, `UserSettings`, `Builds` oraz lokalne wyniki testów są odtwarzalne i pomijane. Pliki projektów IDE mogą być generowane ponownie przez Unity. Weryfikacja dotyczy bieżącej, oczyszczonej wersji projektu. Nie utworzono commitów.
+## Sprawdzenie
+
+**Tools → Poopline → Run PlayMode checks** uruchamia testy w otwartym Editorze. Wynik trafia do `TestResults/PlayMode-0.4.xml`, postęp do `TestResults/0.4-progress.txt`, a zmierzone czasy pełnej trasy do `TestResults/stage-times.txt`. Dodatkowe **Run tunnel visibility checks** sprawdza kamerę, światło i odsłanianie postaci; zapisuje `TestResults/Visibility-0.4.xml`. Wyniki i zakres ręcznego sprawdzenia są w `VALIDATION.md`.
+
+Silnik i pakiety pozostały bez zmian. To wersja do testowania w Unity Editor na Macu, działająca offline. Nie przygotowano nowego wydania macOS ani wersji mobilnych; stary plik w `Builds` nie reprezentuje 0.4. Grafika i animacje pozostają prototypowe. Nie dodano nagrań dźwiękowych. Zmiany nie są commitowane ani stage’owane.
