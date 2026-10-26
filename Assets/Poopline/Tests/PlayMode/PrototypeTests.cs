@@ -36,7 +36,8 @@ namespace Poopline.Tests
             yield return SceneManager.LoadSceneAsync("Poopline");
             game=Object.FindAnyObjectByType<PooplineGame>();
             Assert.That(game,Is.Not.Null);Assert.That(game.Player,Is.Not.Null);
-            if(game.Paused) game.TogglePause();
+            Assert.That(game.InMainMenu,Is.True);
+            game.StartNewGame();
             yield return new WaitForSeconds(.2f);
         }
         [UnityTearDown]
@@ -51,6 +52,7 @@ namespace Poopline.Tests
             if(game!=null) Object.Destroy(game.gameObject);
             yield return null;
             for(int i=0;i<2;i++) PlayerPrefs.DeleteKey(testSaveNamespace+".v"+PooplineGame.LayoutVersion+".level"+i);
+            foreach(string suffix in new[]{".Journey",".Journey.backup",".Settings.volume",".Settings.ambience",".Settings.motion"}) PlayerPrefs.DeleteKey(testSaveNamespace+suffix);
             PlayerPrefs.Save();ExplorationMap.SaveNamespace=previousSaveNamespace;
         }
         private void Keys(params Key[] keys) { InputSystem.QueueStateEvent(keyboard,new KeyboardState(keys)); }
@@ -84,9 +86,20 @@ namespace Poopline.Tests
             Assert.That(game.Player.Climbing,Is.False);
             Assert.That(Vector3.Distance(game.Player.transform.position,up?ladder.TopLanding:ladder.BottomLanding),Is.LessThan(.18f));
         }
+        private IEnumerator UseValveAtWaypoint(Vector3 point)
+        {
+            if(game.LevelIndex!=0 || game.Sluice.Solved || Vector3.Distance(point,new Vector3(30,0,14.5f))>.2f) yield break;
+            Assert.That(game.Sluice.InReach,Is.True);
+            Keys(Key.F);yield return new WaitForSeconds(1.7f);Keys();
+            Assert.That(game.Sluice.Solved,Is.True);
+            ScreenCapture.CaptureScreenshot("TestResults/sluice-valve.png");yield return new WaitForEndOfFrame();
+            yield return new WaitForSeconds(4.7f);
+            Assert.That(game.Sluice.IsOpen,Is.True);
+        }
         // A fixture shortcut for isolated component tests. The campaign test below never uses it.
         private IEnumerator SecondStage()
         {
+            game.Sluice.Restore(true);
             Vector3 exit=game.CurrentLevel.exit.center;exit.y=.05f;
             game.Player.ResetAt(exit);
             yield return new WaitForSeconds(1.6f);
@@ -173,6 +186,7 @@ namespace Poopline.Tests
                         yield return WalkTo(match.TopLanding);yield return Climb(match,false);
                     }
                     else yield return WalkTo(point);
+                    yield return UseValveAtWaypoint(point);
                     Assert.That(game.Recoveries,Is.Zero,"Route waypoint "+point);
                     if(stage==0 && Mathf.Abs(point.x-4)<.1f && point.z>20)
                     {
@@ -306,6 +320,7 @@ namespace Poopline.Tests
         [UnityTest]
         public IEnumerator TransitionFreezesInputAndFinalExitCompletesOnlySecondStage()
         {
+            game.Sluice.Restore(true);
             Vector3 exit=game.CurrentLevel.exit.center;exit.y=.05f;game.Player.ResetAt(exit);
             yield return null;yield return null;Assert.That(game.Transitioning,Is.True);Assert.That(game.Completed,Is.False);
             Vector3 position=game.Player.transform.position;Keys(Key.D);yield return new WaitForSeconds(.3f);
@@ -375,7 +390,7 @@ namespace Poopline.Tests
             Time.timeScale=2;
             for(int stage=0;stage<2;stage++)
             {
-                foreach(var point in game.CurrentLevel.alternateRoute) yield return WalkTo(point);
+                foreach(var point in game.CurrentLevel.alternateRoute) {yield return WalkTo(point);yield return UseValveAtWaypoint(point);}
                 Assert.That(game.Recoveries,Is.Zero);
                 if(stage==0) { Assert.That(game.Transitioning,Is.True);yield return new WaitForSeconds(1.6f); }
             }
@@ -420,6 +435,7 @@ namespace Poopline.Tests
             Assert.That(loaded.Export(),Is.EqualTo(game.Map.Export()));
             yield return SceneManager.LoadSceneAsync("Poopline");
             game=Object.FindAnyObjectByType<PooplineGame>();
+            game.ContinueJourney();
             if(game.Paused) game.TogglePause();
             Assert.That(game.Map.IsDiscovered(visited),Is.True,"Reload restores the saved survey");
             Assert.That(game.Map.Count,Is.GreaterThanOrEqualTo(count));
@@ -437,6 +453,140 @@ namespace Poopline.Tests
             game.Map.Restore(System.Convert.ToBase64String(new byte[]{1}));Assert.That(game.Map.Count,Is.Zero);
             game.Map.Discover(game.Player.transform.position,true);Assert.That(game.Map.Count,Is.GreaterThan(0));
             Assert.That(game.Map.IsDiscovered(game.CurrentLevel.exit.center),Is.False);
+        }
+        [UnityTest]
+        public IEnumerator MenuFreezesCampaignButAnimatesTheNoirBackground()
+        {
+            game.ReturnToMenu();yield return null;
+            Assert.That(game.InMainMenu && game.Frozen,Is.True);
+            Assert.That(game.Player.gameObject.activeSelf,Is.False);
+            Assert.That(game.Levels[0].gameObject.activeSelf || game.Levels[1].gameObject.activeSelf,Is.False);
+            var drop=game.menuBackdrop.GetComponentInChildren<WaterDrip>();
+            Vector3 before=drop.transform.position;float elapsed=game.Elapsed;
+            Keys(Key.D);yield return new WaitForSeconds(.3f);Keys();
+            Assert.That(drop.transform.position,Is.Not.EqualTo(before));Assert.That(game.Elapsed,Is.EqualTo(elapsed));
+            ScreenCapture.CaptureScreenshot("TestResults/menu-noir.png");yield return new WaitForEndOfFrame();
+            game.OpenPanel(MenuPage.Settings);game.Settings.MenuMotion=false;yield return new WaitForEndOfFrame();
+            before=drop.transform.position;Vector3 camera=game.GameCamera.transform.position;
+            yield return new WaitForSeconds(.3f);
+            Assert.That(drop.transform.position,Is.EqualTo(before));Assert.That(game.GameCamera.transform.position,Is.EqualTo(camera));
+            game.BackFromPanel();game.ContinueJourney();yield return null;
+            Assert.That(game.InMainMenu || game.Frozen,Is.False);
+        }
+        [UnityTest]
+        public IEnumerator CampaignCheckpointMapAndSluiceSurviveSceneReload()
+        {
+            yield return SecondStage();
+            game.Player.ResetAt(game.CurrentLevel.checkpoints[0]);yield return new WaitForSeconds(.3f);
+            Assert.That(game.CheckpointIndex,Is.Zero);
+            var visited=new Vector3(30,0,17);game.Player.ResetAt(visited);yield return new WaitForSeconds(.3f);
+            game.ReturnToMenu();
+            yield return SceneManager.LoadSceneAsync("Poopline");game=Object.FindAnyObjectByType<PooplineGame>();
+            Assert.That(game.InMainMenu && game.CanContinue,Is.True);
+            game.ContinueJourney();yield return null;
+            Assert.That(game.LevelIndex,Is.EqualTo(1));Assert.That(game.CheckpointIndex,Is.Zero);
+            Assert.That(game.Sluice.IsOpen,Is.True);Assert.That(game.Map.IsDiscovered(visited),Is.True);
+            Assert.That(Vector3.Distance(game.Player.transform.position,game.CurrentLevel.checkpoints[0]),Is.LessThan(.15f));
+            game.Player.ResetAt(new Vector3(26,0,9));yield return null;
+            Keys(Key.R);yield return null;yield return null;Keys();
+            Assert.That(Vector3.Distance(game.Player.transform.position,game.Spawn),Is.LessThan(.15f));
+        }
+        [UnityTest]
+        public IEnumerator NewGameRequiresConfirmationAndResetsJourneyButKeepsSettings()
+        {
+            yield return SecondStage();game.Map.Discover(new Vector3(36,0,32),true);
+            game.Settings.Volume=.23f;game.ReturnToMenu();game.RequestNewGame();
+            Assert.That(game.Page,Is.EqualTo(MenuPage.NewGame));Assert.That(game.LevelIndex,Is.EqualTo(1));
+            game.BackFromPanel();Assert.That(game.CanContinue,Is.True);
+            game.RequestNewGame();game.StartNewGame();yield return null;
+            Assert.That(game.LevelIndex,Is.Zero);Assert.That(game.CheckpointIndex,Is.EqualTo(-1));
+            Assert.That(game.Sluice.Solved,Is.False);Assert.That(game.Sluice.barrier.enabled,Is.True);
+            Assert.That(game.Map.Count,Is.LessThan(70));Assert.That(game.Settings.Volume,Is.EqualTo(.23f));
+            var save=JourneySave.Load(game.Levels);Assert.That(save.level,Is.Zero);
+            Assert.That(System.Convert.FromBase64String(save.maps[1]),Is.All.EqualTo(0));
+        }
+        [UnityTest]
+        public IEnumerator SettingsMuteAudioAndPersistIndependentlyOfTheJourney()
+        {
+            game.OpenPanel(MenuPage.Settings);game.Settings.Volume=0;game.Settings.Ambience=.31f;game.Settings.MenuMotion=false;
+            yield return null;yield return null;
+            foreach(var source in game.GetComponentsInChildren<AudioSource>()) Assert.That(source.volume,Is.Zero);
+            game.BackFromPanel();var settings=new SewerSettings();
+            Assert.That(settings.Volume,Is.Zero);Assert.That(settings.Ambience,Is.EqualTo(.31f));Assert.That(settings.MenuMotion,Is.False);
+            game.Settings.Volume=.7f;game.Settings.Ambience=0;yield return null;yield return null;
+            Assert.That(game.Sound.AmbienceSource.volume,Is.Zero);Assert.That(game.Sound.EffectsSource.volume,Is.GreaterThan(0));
+            Assert.That(game.Sound.AmbienceSource.isPlaying,Is.True);
+            foreach(var clip in new[]{game.Sound.ambienceClip,game.Sound.dripClip,game.Sound.valveClip,game.Sound.drainClip,game.Sound.stepClip,game.Sound.clickClip})
+            {Assert.That(clip,Is.Not.Null);Assert.That(clip.samples,Is.GreaterThan(1000));Assert.That(clip.loadState,Is.EqualTo(AudioDataLoadState.Loaded));}
+        }
+        [UnityTest]
+        public IEnumerator CorruptOrIncompatibleSaveCannotBeContinuedAndBackupRecovers()
+        {
+            game.SaveProgress();game.SaveProgress();
+            PlayerPrefs.SetString(JourneySave.Key,"{broken json");
+            Assert.That(JourneySave.Load(game.Levels),Is.Not.Null,"Last complete backup should recover");
+            PlayerPrefs.DeleteKey(JourneySave.Key+".backup");Assert.That(JourneySave.Load(game.Levels),Is.Null);
+            var invalid=new JourneyRecord{layout=-10};
+            PlayerPrefs.SetString(JourneySave.Key,JsonUtility.ToJson(invalid));Assert.That(JourneySave.Load(game.Levels),Is.Null);
+            // Dispose the active session before clearing, so OnDestroy cannot overwrite the fixture.
+            Object.Destroy(game.gameObject);yield return null;JourneySave.Clear();
+            yield return SceneManager.LoadSceneAsync("Poopline");game=Object.FindAnyObjectByType<PooplineGame>();
+            Assert.That(game.InMainMenu,Is.True);Assert.That(game.CanContinue,Is.False);
+            game.RequestNewGame();Assert.That(game.InMainMenu,Is.False,"No confirmation for an empty save slot");
+        }
+        [UnityTest]
+        public IEnumerator FloodedGateBlocksExitAndValveNeedsReachAndUninterruptedHold()
+        {
+            Keys(Key.F);yield return new WaitForSeconds(1.7f);Keys();Assert.That(game.Sluice.Solved,Is.False);
+            game.Player.ResetAt(new Vector3(26,0,32));yield return new WaitForSeconds(.2f);
+            Assert.That(game.Sluice.Seen,Is.True);
+            Keys(Key.D);yield return new WaitForSeconds(1);Keys();yield return null;
+            Assert.That(game.Player.transform.position.x,Is.LessThan(28));
+            ScreenCapture.CaptureScreenshot("TestResults/sluice-flooded.png");yield return new WaitForEndOfFrame();
+            game.Player.ResetAt(game.CurrentLevel.exit.center);yield return new WaitForSeconds(.2f);
+            Assert.That(game.Transitioning,Is.False,"Exit stays locked even if a fixture bypasses the gate");
+            game.Player.ResetAt(new Vector3(30,0,14.5f));yield return null;
+            Keys(Key.F);yield return new WaitForSeconds(.5f);Keys();yield return new WaitForSeconds(.4f);
+            Assert.That(game.Sluice.HoldProgress,Is.Zero);Assert.That(game.Sluice.Solved,Is.False);
+            Keys(Key.F);yield return new WaitForSeconds(.4f);game.ToggleMap();float hold=game.Sluice.HoldProgress;
+            yield return new WaitForSeconds(.5f);Assert.That(game.Sluice.HoldProgress,Is.EqualTo(hold));
+            game.ToggleMap();yield return new WaitForSeconds(1.3f);Keys();
+            Assert.That(game.Sluice.Solved,Is.True);
+            Assert.That(game.Sound.EffectsSource.isPlaying,Is.True,"Drain audio is running");
+            game.TogglePause();float drain=game.Sluice.DrainProgress;Vector3 water=game.Sluice.water.position;
+            yield return new WaitForSeconds(.5f);Assert.That(game.Sound.EffectsSource.isPlaying,Is.False,"Pause also stops interaction audio");Assert.That(game.Sluice.DrainProgress,Is.EqualTo(drain));Assert.That(game.Sluice.water.position,Is.EqualTo(water));
+            game.TogglePause();yield return new WaitForSeconds(4.7f);
+            Assert.That(game.Sluice.IsOpen,Is.True);Assert.That(game.Sluice.barrier.enabled,Is.False);
+            Assert.That(game.Sluice.water.position.y,Is.LessThan(0));Assert.That(game.Sluice.gate.position.y,Is.GreaterThan(3));
+            game.Player.ResetAt(new Vector3(26,0,32));yield return WalkTo(new Vector3(34,0,32));
+            ScreenCapture.CaptureScreenshot("TestResults/sluice-drained.png");yield return new WaitForEndOfFrame();
+            yield return WalkTo(new Vector3(37.6f,0,34));Assert.That(game.Transitioning,Is.True);
+        }
+        [UnityTest]
+        public IEnumerator EnterCannotOverwriteCompletedJourneyWithoutConfirmation()
+        {
+            yield return SecondStage();var exit=game.CurrentLevel.exit.center;exit.y=0;
+            game.Player.ResetAt(exit);yield return null;yield return null;
+            Assert.That(game.Completed,Is.True);game.RequestNewGame();
+            Assert.That(game.Page,Is.EqualTo(MenuPage.NewGame));
+            Keys(Key.Escape);yield return null;yield return null;Keys();yield return null;
+            Assert.That(game.Page,Is.EqualTo(MenuPage.Home));Assert.That(game.Completed,Is.True);
+            game.ReturnToMenu();Assert.That(game.CanContinue,Is.False);
+            Keys(Key.Enter);yield return null;yield return null;Keys();yield return null;
+            Assert.That(game.InMainMenu,Is.True);Assert.That(game.Page,Is.EqualTo(MenuPage.NewGame));
+            Assert.That(JourneySave.Load(game.Levels).completed,Is.True);
+        }
+        [UnityTest]
+        public IEnumerator SavingDuringDrainRestoresOpenPassageAndRetryKeepsItSolved()
+        {
+            game.Player.ResetAt(new Vector3(30,0,14.5f));yield return null;
+            Keys(Key.F);yield return new WaitForSeconds(1.7f);Keys();
+            Assert.That(game.Sluice.Solved && !game.Sluice.IsOpen,Is.True);
+            game.ReturnToMenu();
+            yield return SceneManager.LoadSceneAsync("Poopline");game=Object.FindAnyObjectByType<PooplineGame>();
+            game.ContinueJourney();yield return null;
+            Assert.That(game.Sluice.IsOpen,Is.True);Assert.That(game.Sluice.barrier.enabled,Is.False);
+            game.RetryCheckpoint();Assert.That(game.Sluice.IsOpen,Is.True);
         }
         [Test]
         public void CurrentIsLocalAndDoesNotReachUpperWalkway()

@@ -38,16 +38,16 @@ namespace Poopline.Editor
         private sealed class Results : ICallbacks
         {
             private static bool Visibility => SessionState.GetBool("Poopline.VisibilityChecks",false);
-            private static string Progress => Visibility?"TestResults/0.5-visibility-progress.txt":"TestResults/0.5-progress.txt";
+            private static string Progress => Visibility?"TestResults/0.6-visibility-progress.txt":"TestResults/0.6-progress.txt";
             public void RunStarted(ITestAdaptor tests) { File.WriteAllText(Progress,"RUNNING\n"); }
             public void TestStarted(ITestAdaptor test) {}
             public void TestFinished(ITestResultAdaptor result)
             { File.AppendAllText(Progress,result.Name+": "+result.ResultState+" "+result.Message+"\n"); }
             public void RunFinished(ITestResultAdaptor result)
             {
-                TestRunnerApi.SaveResultToFile(result,Visibility?"TestResults/Visibility-0.5.xml":"TestResults/PlayMode-0.5.xml");
+                TestRunnerApi.SaveResultToFile(result,Visibility?"TestResults/Visibility-0.6.xml":"TestResults/PlayMode-0.6.xml");
                 File.AppendAllText(Progress,"FINISHED "+result.PassCount+" passed, "+result.FailCount+" failed\n");
-                Debug.Log("POOPLINE_05_TESTS: "+result.PassCount+" passed, "+result.FailCount+" failed");
+                Debug.Log("POOPLINE_06_TESTS: "+result.PassCount+" passed, "+result.FailCount+" failed");
             }
         }
     }

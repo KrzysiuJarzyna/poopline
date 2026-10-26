@@ -21,6 +21,8 @@ namespace Poopline
             }
             float scale=Mathf.Min(Screen.width/1280f,Screen.height/720f);
             Matrix4x4 old=GUI.matrix;GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-1280*scale)/2,(Screen.height-720*scale)/2,0),Quaternion.identity,Vector3.one*scale);
+            if(game.InMainMenu || (!game.MapOpen && (game.Paused || game.Completed || game.Page!=MenuPage.Home)))
+            {GameMenuView.Draw(game);GUI.matrix=old;return;}
             Panel(new Rect(24,24,316,91),ink);Panel(new Rect(24,24,4,91),new Color(.91f,.62f,.24f));
             GUI.Label(new Rect(43,32,280,34),"POOPLINE",title);
             GUI.Label(new Rect(44,72,280,23),"POD MIASTEM   /   "+(game.LevelIndex+1)+" Z 2",small);
@@ -29,13 +31,19 @@ namespace Poopline
             GUI.Label(new Rect(901,37,335,48),objective,body);
             GUI.Label(new Rect(901,84,335,23),(game.LevelIndex+1).ToString("00")+"  /  "+game.CurrentLevel.title.ToUpperInvariant(),small);
             Panel(new Rect(24,644,1232,52),ink);
-            GUI.Label(new Rect(43,659,930,26),"WASD / STRZAŁKI  ruch i drabiny     E / M  mapa     ESC  pauza     R  restart",body);
+            GUI.Label(new Rect(43,659,930,26),"WASD  ruch i drabiny    F  zawór    E / M  mapa    ESC  pauza    R  punkt kontrolny",body);
             GUI.Label(new Rect(1075,662,165,25),game.Player.Climbing?"NA DRABINIE":game.Player.InWater?"W NURCIE":"SUCHY POMOST",small);
             if(!game.Frozen)
             {
                 var ladder=game.Player.ActiveLadder!=null?game.Player.ActiveLadder:game.Player.NearbyLadder;
                 string prompt="";
-                if(ladder!=null)
+                if(game.LevelIndex==0 && game.Sluice.InReach && !game.Sluice.Solved)
+                {
+                    prompt="Przytrzymaj F — otwórz odpływ";
+                    Panel(new Rect(392,614,496,4),new Color(.15f,.25f,.28f));
+                    Panel(new Rect(392,614,496*game.Sluice.HoldProgress,4),new Color(.91f,.62f,.24f));
+                }
+                else if(ladder!=null)
                 {
                     bool ascending=ladder.EntryDirection(game.Player.transform.position)>0;
                     prompt=game.Player.Climbing
@@ -46,14 +54,7 @@ namespace Poopline
                 if(prompt!="") {Panel(new Rect(376,569,528,46),ink);GUI.Label(new Rect(392,580,504,29),prompt,body);}
                 if(Time.unscaledTime<game.NoticeUntil) {Panel(new Rect(340,126,600,52),ink);GUI.Label(new Rect(356,139,572,35),game.Notice,body);}
             }
-            if(game.Paused || game.Completed)
-            {
-                Panel(new Rect(0,0,1280,720),new Color(.015f,.035f,.05f,.68f));Panel(new Rect(380,210,520,298),ink);
-                GUI.Label(new Rect(414,238,455,55),game.Completed?"Wyszedłeś z kanałów.":"Chwila na oddech.",large);
-                GUI.Label(new Rect(415,307,450,77),game.Completed?"Przeszedłeś oba etapy. Pod kamienicami i Żeliwne mosty są już za tobą.":"Rozgrywka jest zatrzymana. Woda i patrole też czekają.",body);
-                if(!game.Completed && GUI.Button(new Rect(415,401,450,44),"WRACAMY",button)) game.TogglePause();
-                if(GUI.Button(new Rect(415,453,450,38),game.Completed?"ZACZNIJ OBA ETAPY OD NOWA":"ZACZNIJ TEN ETAP OD NOWA",button)) game.Restart();
-            }
+            if(Time.unscaledTime<game.SavedUntil) GUI.Label(new Rect(1120,611,140,25),"● Zapisano",small);
             if(game.Transitioning && !game.Paused)
             {
                 Panel(new Rect(0,0,1280,720),new Color(.008f,.018f,.025f,.98f));

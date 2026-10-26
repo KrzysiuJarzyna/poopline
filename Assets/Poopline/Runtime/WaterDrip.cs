@@ -11,8 +11,8 @@ namespace Poopline
         private void Awake() { origin = transform.localPosition; game = GetComponentInParent<PooplineGame>(); }
         private void Update()
         {
-            if (game == null || game.Frozen) return;
-            elapsed += Time.deltaTime;
+            if(game==null || (game.InMainMenu?!game.BackdropAnimating:game.Frozen)) return;
+            elapsed += game.InMainMenu?Time.unscaledDeltaTime:Time.deltaTime;
             transform.localPosition = origin + Vector3.down * Mathf.Repeat(elapsed * speed + phase, fall);
         }
     }

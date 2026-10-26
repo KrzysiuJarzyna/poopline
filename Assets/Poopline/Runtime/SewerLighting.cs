@@ -41,7 +41,7 @@ namespace Poopline
 
         private float Visibility(Vector3 position)
         {
-            Vector3 delta = position - game.Player.transform.position;
+            Vector3 delta = position - (game.InMainMenu?PooplineGame.MenuFocus:game.Player.transform.position);
             float distance = Mathf.Max(Mathf.Abs(delta.x), Mathf.Abs(delta.z) * .65f);
             return 1 - Mathf.SmoothStep(0, 1, Mathf.InverseLerp(clearDistance, darkDistance, distance));
         }

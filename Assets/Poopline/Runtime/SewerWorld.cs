@@ -382,6 +382,80 @@ namespace Poopline
                 level.exit=new Bounds(new Vector3(x-.4f,1,z),new Vector3(1.5f,3,2.6f));
                 Landmark("Dalszy kanał →",x-1,z,true);
             }
+            public void MenuBackdrop()
+            {
+                Shape("Mokra posadzka pod kamienicą",new Vector3(-39,-.22f,2),new Vector3(22,.4f,16),0);
+                Shape("Lustro wody",new Vector3(-36,.015f,2),new Vector3(9,.03f,13),5);
+                Shape("Cień wewnątrz kolektora",new Vector3(-35,2.5f,6),new Vector3(4.1f,5,.1f),13);
+                foreach(float x in new[]{-42f,-29f})
+                {
+                    Shape("Mur kanału",new Vector3(x,2.25f,5),new Vector3(10,4.5f,.7f),2);
+                    for(int row=0;row<8;row++) for(int n=0;n<8;n++)
+                        Shape("Cegła z wilgotnej ściany",new Vector3(x-4.5f+n*1.2f+(row%2)*.3f,.28f+row*.55f,4.6f),new Vector3(1.12f,.49f,.12f),(row+n)%6==0?1:2);
+                }
+                Arch(new Vector3(-35,0,4.45f),0,2.1f);
+                Beam("Rura pod sklepieniem",new Vector3(-43,3.9f,2),new Vector3(-33.7f,3.9f,2),.32f,3);
+                Beam("Pęknięte kolano",new Vector3(-33.7f,3.9f,2),new Vector3(-33.7f,2.8f,2),.32f,4);
+                Drips(new Vector3(-33.7f,2.7f,2),2.66f,12);
+                Drips(new Vector3(-36.1f,3.8f,3.2f),3.76f,5);
+                Lamp(-32.8f,3.3f,3.6f);
+                var glow=Group("Chłodny blask zza łuku",new Vector3(-35,2.1f,3.9f)).gameObject.AddComponent<Light>();
+                glow.color=new Color(.25f,.56f,.65f);glow.intensity=4;glow.range=6;glow.shadows=LightShadows.Soft;
+                for(int n=0;n<18;n++)
+                {
+                    var ripple=Shape("Smuga pod kroplami",new Vector3(-38+(n%5)*1.1f,.042f,-2+n*.42f),new Vector3(.05f,.012f,.42f+(n%3)*.15f),6);
+                    ripple.AddComponent<WaterMotion>().direction=Vector3.back;
+                }
+            }
+            private void Sluice(SewerLevel level)
+            {
+                var puzzle=root.gameObject.AddComponent<SluicePuzzle>();
+                puzzle.water=Group("Woda w zalanej komorze",new Vector3(34,1.3f,32));
+                Shape("Wysokie lustro wody",Vector3.zero,new Vector3(11.5f,.08f,11.5f),5,false,PrimitiveType.Cube,puzzle.water);
+                for(int n=0;n<10;n++)
+                {
+                    var ripple=Shape("Ruch wody w komorze",new Vector3(-4+n*.9f,.05f,(n%3-1)*2.8f),new Vector3(.06f,.012f,.9f),6,false,PrimitiveType.Cube,puzzle.water);
+                    ripple.AddComponent<WaterMotion>().direction=Vector3.right;
+                }
+                puzzle.gate=Group("Podnoszona krata śluzy",new Vector3(28.1f,0,32));
+                for(int n=0;n<=8;n++) Shape("Pręt kraty",new Vector3(0,1.45f,-1.9f+n*.475f),new Vector3(.14f,2.9f,.12f),4,false,PrimitiveType.Cube,puzzle.gate);
+                foreach(float y in new[]{.3f,2.5f}) Shape("Poprzeczka kraty",new Vector3(0,y,0),new Vector3(.18f,.16f,4),4,false,PrimitiveType.Cube,puzzle.gate);
+                var barrier=Group("Blokada zalanego przejścia",new Vector3(28.1f,1.4f,32));
+                puzzle.barrier=barrier.gameObject.AddComponent<BoxCollider>();puzzle.barrier.size=new Vector3(.3f,3,4.2f);
+                foreach(float z in new[]{29.9f,34.1f}) Shape("Prowadnica śluzy",new Vector3(28.1f,2.2f,z),new Vector3(.35f,4.4f,.22f),3);
+                Shape("Mechanizm podnoszenia",new Vector3(28.1f,3.65f,32),new Vector3(.7f,.5f,4.5f),3);
+                Beam("Przewód od zaworu do śluzy",new Vector3(30,2.4f,16),new Vector3(26.8f,2.4f,16),.12f,4);
+                Beam("Przewód przy ścianie",new Vector3(26.8f,2.4f,16),new Vector3(26.8f,2.4f,31),.12f,4);
+                Beam("Przewód nad kratą",new Vector3(26.8f,2.4f,31),new Vector3(28.1f,3.6f,32),.12f,4);
+                Shape("Podstawa zaworu",new Vector3(30,.5f,16),new Vector3(.6f,1,.6f),3,true);
+                puzzle.valve=Group("Zawór odpływu — przytrzymaj F",new Vector3(30,1.25f,15.55f));
+                for(int n=0;n<16;n++)
+                {
+                    float a=n*Mathf.PI*2/16;
+                    var rim=Shape("Obręcz zaworu",new Vector3(Mathf.Cos(a)*.43f,Mathf.Sin(a)*.43f,0),new Vector3(.2f,.08f,.12f),7,false,PrimitiveType.Cube,puzzle.valve);
+                    rim.transform.localRotation=Quaternion.Euler(0,0,n*22.5f+90);
+                }
+                for(int n=0;n<3;n++)
+                {
+                    var spoke=Shape("Szprycha zaworu",Vector3.zero,new Vector3(.8f,.065f,.1f),4,false,PrimitiveType.Cube,puzzle.valve);
+                    spoke.transform.localRotation=Quaternion.Euler(0,0,n*60);
+                }
+                Shape("Pas przy stanowisku zaworu",new Vector3(30,.025f,14.5f),new Vector3(1.2f,.02f,.12f),4);
+                Lamp(30.6f,17,2.8f);
+                Lamp(27.2f,32.5f,3.3f);
+                Drain(31,28);
+                puzzle.discharge=Group("Odpływ po otwarciu zaworu",new Vector3(31,0,28));
+                Shape("Strumień do studni",new Vector3(0,.7f,0),new Vector3(.38f,1.4f,.38f),6,false,PrimitiveType.Cube,puzzle.discharge);
+                for(int n=0;n<8;n++)
+                {
+                    var drop=Shape("Kropla odpływu",new Vector3((n%3-1)*.3f,1.5f,(n%2)*.3f),new Vector3(.06f,.22f,.06f),6,false,PrimitiveType.Cube,puzzle.discharge);
+                    var motion=drop.AddComponent<WaterDrip>();motion.fall=1.45f;motion.phase=n*.23f;
+                }
+                puzzle.discharge.gameObject.SetActive(false);
+                for(int n=0;n<5;n++) Shape("Ślad poziomu wody na murze",new Vector3(39.7f,.35f+n*.35f,32),new Vector3(.03f,.05f,.55f),1);
+                for(int x=28;x<40;x++) for(int z=26;z<38;z++) if(floor.ContainsKey(new Vector2Int(x,z))) floor[new Vector2Int(x,z)]=true;
+                Landmark("Zawór odpływu",30,15);Landmark("Zalana komora",30,32);
+            }
             public void Stage(int index)
             {
                 var level=root.gameObject.AddComponent<SewerLevel>();
@@ -406,11 +480,11 @@ namespace Poopline
                     Lamp(11,23);Lamp(25,29);Lamp(34,37);
                     // A dry crossing is optional; water remains traversable everywhere along both banks.
                     Shape("Niski mostek serwisowy",new Vector3(17,-.15f,0),new Vector3(2,.3f,4.7f),1,true);
-                    ExitDoor(level,38,34);
-                    level.checkpoints=new[]{new Vector3(8,.05f,15),new Vector3(26,.05f,31)};
+                    ExitDoor(level,38,34);Sluice(level);
+                    level.checkpoints=new[]{new Vector3(8,.05f,15),new Vector3(30,.05f,13.5f),new Vector3(26,.05f,31)};
                     level.objectives=new[]{"Znajdź przejście do dalszego kanału.","Komory łączą się. Szukaj dalszego kanału.","Szukaj chłodnego światła przy odpływie."};
-                    level.suggestedRoute=new[]{P(8,-3.55f),P(8,3.55f),P(8,15),P(4,15),P(4,23),P(8,23),P(8,32),P(26,32),P(34,32),P(37.6f,34)};
-                    level.alternateRoute=new[]{P(24,-3.55f),P(24,3.55f),P(24,12),P(30,12),P(30,19),P(26,19),P(26,32),P(34,32),P(37.6f,34)};
+                    level.suggestedRoute=new[]{P(8,-3.55f),P(8,3.55f),P(8,15),P(4,15),P(4,23),P(8,23),P(8,32),P(26,32),P(26,19),P(29,19),P(29,14.5f),P(30,14.5f),P(29,14.5f),P(29,19),P(26,19),P(26,32),P(34,32),P(37.6f,34)};
+                    level.alternateRoute=new[]{P(24,-3.55f),P(24,3.55f),P(24,12),P(30,12),P(30,14.5f),P(29,14.5f),P(29,19),P(26,19),P(26,32),P(34,32),P(37.6f,34)};
                     level.playableBounds=new Bounds(new Vector3(19,2,17),new Vector3(46,12,48));
                 }
                 else
@@ -454,6 +528,9 @@ namespace Poopline
         public static void Build(Transform root, Material[] materials)
         {
             var shared=new Builder(root,materials);shared.Human();shared.Camera();
+            var backdrop=new GameObject("Menu — nocny kolektor");backdrop.transform.SetParent(root,false);
+            new Builder(backdrop.transform,materials).MenuBackdrop();backdrop.SetActive(false);
+            root.GetComponent<PooplineGame>().menuBackdrop=backdrop.transform;
             for(int i=0;i<2;i++)
             {
                 var stage=new GameObject(i==0?"01 — Pod kamienicami":"02 — Żeliwne mosty");stage.transform.SetParent(root,false);

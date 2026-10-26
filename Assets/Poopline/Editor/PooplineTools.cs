@@ -40,6 +40,13 @@ namespace Poopline.Editor
                 EditorUtility.SetDirty(m);materials[i]=m;
             }
             var root=new GameObject("Poopline");root.AddComponent<PooplineGame>().layoutVersion=PooplineGame.LayoutVersion;
+            var audio=root.AddComponent<SewerAudio>();
+            audio.ambienceClip=AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Poopline/Audio/CanalBed.wav");
+            audio.dripClip=AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Poopline/Audio/Drip.wav");
+            audio.valveClip=AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Poopline/Audio/Valve.wav");
+            audio.drainClip=AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Poopline/Audio/Drain.wav");
+            audio.stepClip=AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Poopline/Audio/Step.wav");
+            audio.clickClip=AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Poopline/Audio/Click.wav");
             root.AddComponent<RunnerHud>();root.AddComponent<SewerLighting>();SewerWorld.Build(root.transform,materials);
             RenderSettings.ambientMode=AmbientMode.Flat;
             RenderSettings.ambientLight=Color.black;
@@ -61,7 +68,7 @@ namespace Poopline.Editor
             EditorSceneManager.SaveScene(scene,ScenePath);
             EditorBuildSettings.scenes=new[]{new EditorBuildSettingsScene(ScenePath,true)};
             EditorSceneManager.playModeStartScene=null;
-            PlayerSettings.bundleVersion="0.5.0";
+            PlayerSettings.bundleVersion="0.6.0";
             AssetDatabase.SaveAssets();
             if(SceneView.lastActiveSceneView!=null)
             {
@@ -70,7 +77,7 @@ namespace Poopline.Editor
                 SceneView.lastActiveSceneView.Repaint();
             }
             Selection.activeGameObject=null;
-            Debug.Log("POOPLINE_05_SCENE_READY");
+            Debug.Log("POOPLINE_06_SCENE_READY");
         }
         [MenuItem("Tools/Poopline/Validate playable canal",priority=20)]
         public static void ValidateProject()
@@ -82,12 +89,18 @@ namespace Poopline.Editor
                 throw new InvalidOperationException("Incomplete campaign.");
             if(stages[0].GetComponentsInChildren<RatPatrol>(true).Length!=0 || stages[1].GetComponentsInChildren<RatPatrol>(true).Length!=3 || stages[1].GetComponentsInChildren<SewerLadder>(true).Length!=4)
                 throw new InvalidOperationException("Incorrect stage encounters.");
+            var sluice=stages[0].GetComponent<SluicePuzzle>();
+            var audio=game.GetComponent<SewerAudio>();
+            if(game.menuBackdrop==null || sluice==null || sluice.valve==null || sluice.water==null || sluice.gate==null || sluice.discharge==null || sluice.barrier==null)
+                throw new InvalidOperationException("Missing menu or sluice parts.");
+            if(audio==null || audio.ambienceClip==null || audio.dripClip==null || audio.valveClip==null || audio.drainClip==null || audio.stepClip==null || audio.clickClip==null)
+                throw new InvalidOperationException("Missing sound assets.");
             foreach(var stage in stages) if(stage.mapCells.Length<500 || stage.landmarks.Length<4) throw new InvalidOperationException("Missing exploration layout.");
             if(game.GetComponentsInChildren<TextMesh>(true).Length!=0)
                 throw new InvalidOperationException("World-space labels are not allowed.");
             foreach(var child in game.GetComponentsInChildren<Transform>(true))
                 if(GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(child.gameObject)!=0) throw new InvalidOperationException("Missing script: "+child.name);
-            Debug.Log("POOPLINE_05_VALIDATED");
+            Debug.Log("POOPLINE_06_VALIDATED");
         }
     }
 }

@@ -27,8 +27,8 @@ namespace Poopline
             if (game == null || game.Player == null || surfaces.Length == 0) return;
             Vector3 from = game.GameCamera.transform.position;
             Vector3 feet = game.Player.transform.position;
-            bool hide = Blocks(from, feet + Vector3.up * .15f) ||
-                Blocks(from, feet + Vector3.up * .9f) || Blocks(from, feet + Vector3.up * 1.7f);
+            bool hide = !game.InMainMenu && (Blocks(from, feet + Vector3.up * .15f) ||
+                Blocks(from, feet + Vector3.up * .9f) || Blocks(from, feet + Vector3.up * 1.7f));
             if (hide == Hidden) return;
             Hidden = hide;
             for (int i = 0; i < surfaces.Length; i++)
