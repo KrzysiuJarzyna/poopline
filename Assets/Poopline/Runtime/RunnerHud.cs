@@ -29,7 +29,7 @@ namespace Poopline
             GUI.Label(new Rect(901,37,335,48),objective,body);
             GUI.Label(new Rect(901,84,335,23),(game.LevelIndex+1).ToString("00")+"  /  "+game.CurrentLevel.title.ToUpperInvariant(),small);
             Panel(new Rect(24,644,1232,52),ink);
-            GUI.Label(new Rect(43,659,930,26),"WASD / STRZAŁKI  ruch i drabiny     ESC  pauza     R  restart etapu",body);
+            GUI.Label(new Rect(43,659,930,26),"WASD / STRZAŁKI  ruch i drabiny     E / M  mapa     ESC  pauza     R  restart",body);
             GUI.Label(new Rect(1075,662,165,25),game.Player.Climbing?"NA DRABINIE":game.Player.InWater?"W NURCIE":"SUCHY POMOST",small);
             if(!game.Frozen)
             {
@@ -60,6 +60,7 @@ namespace Poopline
                 GUI.Label(new Rect(375,275,560,70),"Dalej pod miasto…",large);
                 GUI.Label(new Rect(377,355,530,50),"02 / ŻELIWNE MOSTY",body);
             }
+            if(game.MapOpen) ExplorationMapView.Draw(game);
             GUI.matrix=old;
         }
     }

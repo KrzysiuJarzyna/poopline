@@ -6,9 +6,11 @@ namespace Poopline
     {
         private readonly InputAction move = new InputAction("Move", InputActionType.Value);
         private readonly InputAction pause = new InputAction("Pause", InputActionType.Button);
+        private readonly InputAction map = new InputAction("Map", InputActionType.Button);
         private readonly InputAction retry = new InputAction("Retry", InputActionType.Button);
         public Vector2 Move => Vector2.ClampMagnitude(move.ReadValue<Vector2>(), 1);
         public bool PausePressed => pause.WasPressedThisFrame();
+        public bool MapPressed => map.WasPressedThisFrame();
         public bool RetryPressed => retry.WasPressedThisFrame();
         public RunnerInput()
         {
@@ -17,8 +19,9 @@ namespace Poopline
             move.AddBinding("<Gamepad>/leftStick");
             pause.AddBinding("<Keyboard>/escape"); pause.AddBinding("<Gamepad>/start");
             retry.AddBinding("<Keyboard>/r");
-            move.Enable(); pause.Enable(); retry.Enable();
+            map.AddBinding("<Keyboard>/m"); map.AddBinding("<Keyboard>/e"); map.AddBinding("<Gamepad>/select");
+            move.Enable(); pause.Enable(); retry.Enable(); map.Enable();
         }
-        public void Dispose() { move.Dispose(); pause.Dispose(); retry.Dispose(); }
+        public void Dispose() { move.Dispose(); pause.Dispose(); retry.Dispose(); map.Dispose(); }
     }
 }

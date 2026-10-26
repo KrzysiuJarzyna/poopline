@@ -5,7 +5,7 @@ namespace Poopline
     [DisallowMultipleComponent]
     public sealed class PooplineGame : MonoBehaviour
     {
-        public const int LayoutVersion = 7;
+        public const int LayoutVersion = 8;
         public int layoutVersion;
         public SewerPlayer Player { get; private set; }
         public RunnerInput Input { get; private set; }
@@ -22,7 +22,10 @@ namespace Poopline
         public bool Paused { get; private set; }
         public bool Completed { get; private set; }
         public bool Transitioning { get; private set; }
-        public bool Frozen => Paused || Completed || Transitioning;
+        public bool MapOpen { get; private set; }
+        public ExplorationMap Map => maps[LevelIndex];
+        private ExplorationMap[] maps;
+        public bool Frozen => Paused || Completed || Transitioning || MapOpen;
         public string Notice { get; private set; }
         public float NoticeUntil { get; private set; }
         public float Elapsed { get; private set; }
@@ -45,6 +48,8 @@ namespace Poopline
             if (Player == null || GameCamera == null || Levels.Length != 2)
             { Debug.LogError("Open Tools > Poopline > Rebuild playable canal before Play."); enabled = false; return; }
             StageTimes = new float[Levels.Length];
+            maps = new ExplorationMap[Levels.Length];
+            for(int i=0;i<Levels.Length;i++) maps[i]=new ExplorationMap(Levels[i], i);
             Player.Initialize(this);
             GameCamera.GetComponent<SewerCamera>().Initialize(this);
             GetComponent<RunnerHud>().Initialize(this);
@@ -56,8 +61,12 @@ namespace Poopline
         private void Update()
         {
             if (Input.RetryPressed) { Restart(); return; }
-            if (Input.PausePressed && !Completed) TogglePause();
-            if (Paused || Completed) return;
+            if (Input.MapPressed && !Completed && !Transitioning) ToggleMap();
+            if (Input.PausePressed && !Completed)
+            {
+                if(MapOpen) ToggleMap(); else TogglePause();
+            }
+            if (Paused || Completed || MapOpen) return;
             if (Transitioning)
             {
                 transitionRemaining -= Time.deltaTime;
@@ -67,6 +76,7 @@ namespace Poopline
             Elapsed += Time.deltaTime;
             LevelElapsed += Time.deltaTime;
             Vector3 p = Player.transform.position;
+            Map.Discover(p);
             for (int i = CheckpointIndex + 1; i < CurrentLevel.checkpoints.Length; i++)
             {
                 if (Vector3.Distance(p, CurrentLevel.checkpoints[i]) > 2) continue;
@@ -76,6 +86,7 @@ namespace Poopline
             }
             if (!CurrentLevel.ContainsPlayer(p)) { Recover("Wracasz na ostatni bezpieczny pomost."); return; }
             if (!CurrentLevel.ContainsExit(p)) return;
+            Map.Save();
             StageTimes[LevelIndex] = LevelElapsed;
             Player.StopMotion();
             if (LevelIndex + 1 < Levels.Length)
@@ -93,14 +104,20 @@ namespace Poopline
             Rats = CurrentLevel.GetComponentsInChildren<RatPatrol>();
             foreach (var rat in Rats) { rat.Initialize(this); rat.ResetPatrol(); }
             CheckpointIndex = -1;
-            Paused = Completed = Transitioning = false;
+            Paused = Completed = Transitioning = MapOpen = false;
             LevelElapsed = 0;
             protectedUntil = Time.time + 1.5f;
             Player.ResetAt(Spawn);
+            Map.Discover(Spawn, true);
             GameCamera.GetComponent<SewerCamera>().Snap();
             ShowNotice(CurrentLevel.introduction, 7);
         }
 
+        public void ToggleMap()
+        {
+            MapOpen = !MapOpen; Player.StopMotion();
+            if(MapOpen) Map.Save();
+        }
         public void TogglePause() { Paused = !Paused; Player.StopMotion(); }
         public void Restart()
         {
@@ -129,6 +146,6 @@ namespace Poopline
         private void OnApplicationFocus(bool focused)
         { if (!focused && Player != null && !Paused && !Completed) TogglePause(); }
         private void OnApplicationPause(bool paused) { if (paused) OnApplicationFocus(false); }
-        private void OnDestroy() { Input?.Dispose(); Application.targetFrameRate = previousFrameRate; }
+        private void OnDestroy() { if(maps!=null) foreach(var map in maps) map.Save(); Input?.Dispose(); Application.targetFrameRate = previousFrameRate; }
     }
 }

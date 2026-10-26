@@ -205,37 +205,6 @@ namespace Poopline
                 for(float x=3;x<length;x+=6) Beam("Obejma przewodu",new Vector3(x,4.1f,z+4.05f),new Vector3(x+.12f,4.1f,z+4.05f),.44f,3);
                 WaterEnd(0,z,true);WaterEnd(length,z,false);
             }
-            private void Passage(float x, float from, float to, bool closed = false)
-            {
-                float middle=(from+to)/2, length=to-from;
-                Shape("Dno bocznego kanału",new Vector3(x,-.15f,middle),new Vector3(3.5f,.3f,length),1,true);
-                Shape("Woda w bocznym kanale",new Vector3(x,.075f,middle),new Vector3(3.35f,.035f,length),5);
-                foreach(float side in new[]{-1f,1f})
-                    Shape("Ściana bocznego kanału",new Vector3(x+side*1.9f,1.5f,middle),new Vector3(.35f,3.3f,length),2,true);
-                var current=Group("Nurt bocznego kanału",new Vector3(x,.1f,middle)).gameObject.AddComponent<FlowVolume>();
-                current.size=new Vector3(3.35f,1,length);current.localCurrent=new Vector3(0,0,.32f);
-                for(float z=from+.8f;z<to-.8f;z+=1.5f)
-                {
-                    var streak=Shape("Refleks w odnodze",new Vector3(x+.5f,.1f,z),new Vector3(.035f,.012f,.4f),6);
-                    streak.AddComponent<WaterMotion>().direction=Vector3.forward;
-                }
-                for(float z=from;z<to;z+=4.5f) Arch(new Vector3(x,0,z));
-                Lamp(x+.8f,middle+1,2.6f);
-                Beam("Przeciekający przewód",new Vector3(x-1.5f,2.8f,middle),new Vector3(x+1.5f,2.8f,middle),.22f,3);
-                Drips(new Vector3(x-.6f,2.55f,middle),2.45f);
-                if(closed)
-                {
-                    Shape("Ściana komory bocznej",new Vector3(x,1.5f,to),new Vector3(3.6f,3.3f,.3f),2,true);
-                    Shape("Ciemny odpływ w dół",new Vector3(x,.09f,to-.8f),new Vector3(2,.04f,1.2f),13);
-                    for(float dx=-.9f;dx<=.9f;dx+=.3f) Shape("Krata studzienki",new Vector3(x+dx,.12f,to-.8f),new Vector3(.06f,.04f,1.2f),3);
-                    Drips(new Vector3(x,2,to-.8f),1.85f);
-                }
-            }
-            private void Barrier(float x, float z)
-            {
-                Shape("Zamknięta krata chodnika",new Vector3(x,1.1f,z),new Vector3(.18f,2.2f,2.75f),3,true);
-                for(int i=0;i<5;i++) Shape("Stary żółty pas na kracie",new Vector3(x-.1f,.3f+i*.37f,z),new Vector3(.025f,.08f,2.5f),4);
-            }
             private void ServiceDetails(float length, float z, int row)
             {
                 foreach(float x in new[]{length*.28f, length*.74f})
@@ -287,92 +256,192 @@ namespace Poopline
                 Ladder(new Vector3(x+10.8f,0,z+3.55f),-90);
                 Lamp(x,z-4.5f,4.1f);
             }
+            private readonly System.Collections.Generic.Dictionary<Vector2Int,bool> floor = new System.Collections.Generic.Dictionary<Vector2Int,bool>();
+            private readonly System.Collections.Generic.HashSet<Vector2Int> rooms = new System.Collections.Generic.HashSet<Vector2Int>();
+            private readonly System.Collections.Generic.List<MapLandmark> landmarks = new System.Collections.Generic.List<MapLandmark>();
+            private void Footprint(int x,int z,int width,int depth,bool water=false,bool build=true)
+            {
+                for(int dx=0;dx<width;dx++) for(int dz=0;dz<depth;dz++)
+                {
+                    var p=new Vector2Int(x+dx,z+dz);
+                    floor[p]=water;
+                    if(build) rooms.Add(p);
+                }
+            }
+            private void Landmark(string label,float x,float z,bool exit=false)
+            { landmarks.Add(new MapLandmark(label,new Vector3(x,0,z),exit)); }
+            private void RoomWall(Vector3 a,Vector3 b,bool low)
+            {
+                Vector3 d=b-a, middle=(a+b)/2;
+                bool horizontal=Mathf.Abs(d.x)>.1f;
+                float length=d.magnitude,height=low?.65f:3.4f;
+                var wall=Group("Ceglany mur komory",middle);
+                Shape("Mur",new Vector3(0,height/2,0),new Vector3(horizontal?length:.24f,height,horizontal?.24f:length),2,true,PrimitiveType.Cube,wall);
+                // Foreground masonry disappears only along the camera-to-player ray; collision remains.
+                wall.gameObject.AddComponent<SewerCutaway>();
+                int courses=low?1:6;
+                for(int row=0;row<courses;row++)
+                    for(float step=.5f;step<length-.2f;step+=1.1f)
+                    {
+                        float along=-length/2+step+(row%2)*.12f;
+                        Shape("Cegła starego kolektora",new Vector3(horizontal?along:0,.26f+row*.55f,horizontal?0:along),
+                            new Vector3(horizontal?1.03f:.29f,.49f,horizontal?.29f:1.03f),row%3==0?0:2,false,PrimitiveType.Cube,wall);
+                    }
+                Shape("Kamienna czapa muru",new Vector3(0,height+.06f,0),new Vector3(horizontal?length+.08f:.36f,.12f,horizontal?.36f:length+.08f),1,false,PrimitiveType.Cube,wall);
+            }
+            private void BuildRooms()
+            {
+                // Merge adjacent cells into strips: no internal walls at room/corridor junctions.
+                for(int z=5;z<48;z++)
+                {
+                    int x=0;
+                    while(x<54)
+                    {
+                        if(!rooms.Contains(new Vector2Int(x,z))) {x++;continue;}
+                        int from=x;
+                        while(rooms.Contains(new Vector2Int(x,z))) x++;
+                        Shape("Płyty posadzki komory",new Vector3((from+x)/2f,-.16f,z+.5f),new Vector3(x-from,.32f,1),1,true);
+                        if(z%2==0) Shape("Spoina posadzki",new Vector3((from+x)/2f,.007f,z),new Vector3(x-from,.014f,.022f),0);
+                    }
+                }
+                for(int direction=0;direction<4;direction++)
+                {
+                    Vector2Int normal=direction==0?Vector2Int.up:direction==1?Vector2Int.down:direction==2?Vector2Int.right:Vector2Int.left;
+                    bool horizontal=direction<2;
+                    for(int line=0;line<55;line++)
+                    {
+                        int step=0;
+                        while(step<55)
+                        {
+                            Vector2Int p=horizontal?new Vector2Int(step,line):new Vector2Int(line,step);
+                            if(!rooms.Contains(p)||floor.ContainsKey(p+normal)) {step++;continue;}
+                            int from=step;
+                            do { step++;p=horizontal?new Vector2Int(step,line):new Vector2Int(line,step); }
+                            while(step<55 && rooms.Contains(p) && !floor.ContainsKey(p+normal));
+                            float edge=line+(direction==0||direction==2?1:0);
+                            RoomWall(horizontal?new Vector3(from,0,edge):new Vector3(edge,0,from),horizontal?new Vector3(step,0,edge):new Vector3(edge,0,step),direction==1);
+                        }
+                    }
+                }
+            }
+            private void WetTunnel(int x,int from,int to)
+            {
+                Shape("Płytka woda w przecieku",new Vector3(x,.065f,(from+to)/2f),new Vector3(3.6f,.04f,to-from),5);
+                var flow=Group("Przeciek w odnodze",new Vector3(x,.1f,(from+to)/2f)).gameObject.AddComponent<FlowVolume>();
+                flow.size=new Vector3(3.6f,1,to-from);flow.localCurrent=new Vector3(0,0,.25f);
+                for(float z=from+.8f;z<to;z+=2.5f)
+                {
+                    Arch(new Vector3(x,0,z));
+                    var streak=Shape("Ruch płytkiej wody",new Vector3(x+.5f,.09f,z),new Vector3(.04f,.01f,.5f),6);
+                    streak.AddComponent<WaterMotion>().direction=Vector3.forward;
+                }
+                Beam("Pęknięta rura pod sklepieniem",new Vector3(x-1.5f,2.7f,from+2),new Vector3(x+1.5f,2.7f,from+2),.2f,3);
+                Drips(new Vector3(x-.6f,2.55f,from+2),2.45f);
+            }
+            private void MapObstacle(float x,float z,float radius)
+            {
+                var keys=new System.Collections.Generic.List<Vector2Int>(floor.Keys);
+                foreach(var p in keys)
+                    if(Vector2.Distance(new Vector2(p.x+.5f,p.y+.5f),new Vector2(x,z))<radius) floor.Remove(p);
+            }
+            private void Cistern(float x,float z)
+            {
+                Shape("Okrągła ceglana cysterna",new Vector3(x,.8f,z),new Vector3(3.8f,.8f,3.8f),2,true,PrimitiveType.Cylinder);
+                Shape("Żeliwny pierścień cysterny",new Vector3(x,1.63f,z),new Vector3(4.1f,.1f,4.1f),3,false,PrimitiveType.Cylinder);
+                Shape("Woda w cysternie",new Vector3(x,1.75f,z),new Vector3(3.65f,.025f,3.65f),5,false,PrimitiveType.Cylinder);
+                Beam("Zasilanie cysterny",new Vector3(x,3,z+4),new Vector3(x,3,z),.28f,4);
+                Drips(new Vector3(x,2.8f,z),1.02f,10);
+                Lamp(x-3,z+3,3.1f);
+                Landmark("Cysterna",x-3,z);MapObstacle(x,z,2);
+            }
+            private void Pumps(float x,float z)
+            {
+                for(int n=0;n<3;n++)
+                {
+                    Shape("Stara pompa żeliwna",new Vector3(x+n*2,1,z),new Vector3(1.2f,1,1.2f),3,true,PrimitiveType.Cylinder);
+                    Beam("Miedziane kolano pompy",new Vector3(x+n*2,.6f,z),new Vector3(x+n*2,.6f,z-1),.26f,4);
+                    MapObstacle(x+n*2,z,.85f);
+                    Shape("Koło zaworu",new Vector3(x+n*2,1.4f,z-.7f),new Vector3(.7f,.07f,.7f),4,false,PrimitiveType.Cylinder).transform.rotation=Quaternion.Euler(90,0,0);
+                }
+                Lamp(x+2,z+.6f,3.1f);Landmark("Stare pompy",x+2,z-2.5f);
+            }
+            private void Drain(float x,float z)
+            {
+                Shape("Studnia odpływowa",new Vector3(x,.018f,z),new Vector3(2.2f,.025f,2.2f),13);
+                for(float dx=-1;dx<=1;dx+=.3f) Shape("Krata studni",new Vector3(x+dx,.04f,z),new Vector3(.07f,.04f,2.2f),3);
+                Drips(new Vector3(x,3,z),2.94f,8);
+                Beam("Odpływ z podwórka kamienicy",new Vector3(x,3.3f,z+2),new Vector3(x,3.3f,z),.3f,3);
+            }
+            private void ExitDoor(SewerLevel level,float x,float z)
+            {
+                Arch(new Vector3(x,0,z),90,1.7f);
+                Shape("Ciemność następnego kolektora",new Vector3(x+.5f,1.35f,z),new Vector3(.08f,2.7f,3),13);
+                for(int n=0;n<5;n++) Shape("Jasne płytki przy odpływie",new Vector3(x-3+n*.55f,.025f,z),new Vector3(.22f,.035f,.8f),1);
+                var l=Group("Chłodne światło z dalszego kanału",new Vector3(x-.4f,2.1f,z)).gameObject.AddComponent<Light>();
+                l.color=new Color(.4f,.9f,.8f);l.range=5;l.intensity=5;l.shadows=LightShadows.Soft;
+                level.exit=new Bounds(new Vector3(x-.4f,1,z),new Vector3(1.5f,3,2.6f));
+                Landmark("Dalszy kanał →",x-1,z,true);
+            }
             public void Stage(int index)
             {
                 var level=root.gameObject.AddComponent<SewerLevel>();
-                float length=index==0?100:124, spacing=index==0?22:26, right=length-4;
                 level.title=index==0?"Pod kamienicami":"Żeliwne mosty";
-                level.introduction=index==0?"Telefon oświetla drogę. Ruszaj wzdłuż kanału.":"Głębiej pod miastem. Szukaj przejść między pomostami.";
-                level.start=new Vector3(2,.05f,-3.55f);
-                level.playableBounds=new Bounds(new Vector3(length/2,2,spacing*1.5f+3),new Vector3(length+8,12,spacing*3+25));
-                level.checkpoints=new Vector3[3];
-                level.objectives=index==0?new[]{"Znajdź przejście do bocznego kanału.","Przejdź przez stary kolektor.","Znajdź drogę przez odnogi kanału.","Przejdź kanałem do następnego poziomu."}:new[]{"Znajdź przejście obok pierwszego patrolu.","Poszukaj drogi między mostami.","Przedostań się przez galerię pomp.","Odszukaj końcowy kanał odpływowy."};
-                var route=new System.Collections.Generic.List<Vector3>();
-                for(int row=0;row<4;row++)
+                level.introduction=index==0?"Przejście dalej poznasz po chłodnym świetle. E / M — mapa.":"Mosty, woda czy boczne komory? Wybierz drogę obok patroli.";
+                level.start=new Vector3(3,.05f,-3.55f);
+                int length=index==0?32:44;
+                Canal(length,0,index==0?new[]{8f,24f}:new[]{8f,24f,36f},new float[0],false);
+                ServiceDetails(length,0,0);
+                Lamp(9.9f,4.4f);Lamp(26,4.4f);
+                for(int x=0;x<length;x++) for(int z=-5;z<5;z++) floor[new Vector2Int(x,z)]=z>=-2&&z<2;
+                // Both entries rejoin through different chambers; the upper gallery closes a second loop.
+                Footprint(6,5,4,9,true);
+                if(index==0)
                 {
-                    float z=row*spacing, exitX=row%2==0?right:4, entryX=row%2==0?4:right;
-                    float alcoveX=row%2==0?length*.44f:length*.58f;
-                    Canal(length,z,new[]{exitX,alcoveX},row==0?new float[0]:new[]{entryX},row%2!=0);
-                    ServiceDetails(length,z,row);
-                    Passage(alcoveX,z+4.9f,z+10.1f,true);
-                    if(row<3)
-                    {
-                        Passage(exitX,z+4.9f,z+spacing-4.9f);
-                        level.checkpoints[row]=new Vector3(exitX,.05f,z+spacing-3.55f);
-                    }
-                    else
-                    {
-                        Passage(exitX,z+4.9f,z+13,true);
-                        level.exit=new Bounds(new Vector3(exitX,1,z+10.5f),new Vector3(2.8f,3,2.2f));
-                        Lamp(exitX,z+12,2.7f);
-                    }
-                    if(index==0)
-                    {
-                        float approach=row%2==0?12:length-12, after=row%2==0?25:length-25;
-                        Barrier(row%2==0?18:length-18,z-3.55f);
-                        // A narrow, covered service bridge gives a dry place to stop and look around.
-                        Shape("Niski mostek serwisowy",new Vector3(length*.63f,-.15f,z),new Vector3(2,.3f,4.7f),1,true);
-                        route.Add(new Vector3(approach,0,z-3.55f));route.Add(new Vector3(approach,0,z));
-                        route.Add(new Vector3(after,0,z));route.Add(new Vector3(after,0,z-3.55f));
-                        route.Add(new Vector3(exitX,0,z-3.55f));
-                    }
-                    else
-                    {
-                        if(row<3)
-                        {
-                            float bx=row==0?20:row==1?76:42;
-                            Bridge(bx,z);
-                            Rat(new Vector3(bx+3,.12f,z-3.55f),new Vector3(bx+9,.12f,z-3.55f),row==0?.85f:1.15f);
-                            if(row%2==0)
-                            {
-                                route.Add(new Vector3(bx,0,z-3.9f));
-                                route.Add(new Vector3(bx,2.6f,z-3.05f));
-                                route.Add(new Vector3(bx,2.6f,z+3.55f));
-                                route.Add(new Vector3(bx+10,2.6f,z+3.55f));
-                                route.Add(new Vector3(bx+11.45f,0,z+3.55f));
-                            }
-                            else
-                            {
-                                route.Add(new Vector3(100,0,z-3.55f));route.Add(new Vector3(100,0,z+3.55f));
-                                route.Add(new Vector3(bx+11.45f,0,z+3.55f));
-                                route.Add(new Vector3(bx+9.95f,2.6f,z+3.55f));
-                                route.Add(new Vector3(bx,2.6f,z+3.55f));
-                                route.Add(new Vector3(bx,2.6f,z-3.05f));
-                                route.Add(new Vector3(bx,0,z-4.55f));
-                                route.Add(new Vector3(exitX,0,z-3.55f));
-                            }
-                        }
-                        else
-                        {
-                            Rat(new Vector3(82,.12f,z-3.55f),new Vector3(94,.12f,z-3.55f),1.25f);
-                            Rat(new Vector3(30,.12f,z+3.55f),new Vector3(43,.12f,z+3.55f),1.05f);
-                            route.Add(new Vector3(100,0,z-3.55f));route.Add(new Vector3(100,0,z));
-                            route.Add(new Vector3(72,0,z));route.Add(new Vector3(72,0,z-3.55f));
-                            route.Add(new Vector3(exitX,0,z-3.55f));
-                        }
-                        // Pump machinery and a closed side of the channel create distinct silhouettes.
-                        for(int n=0;n<3;n++)
-                        {
-                            Shape("Pompa tłocząca",new Vector3(length*.48f+n*2,1,z+4.2f),new Vector3(1,1.5f,1),3,false,PrimitiveType.Cylinder);
-                            Beam("Rura ssąca pompy",new Vector3(length*.48f+n*2,.45f,z+3.9f),new Vector3(length*.48f+n*2,-.35f,z+1.4f),.23f,4);
-                        }
-                        Shape("Dolny most betonowy",new Vector3(length-12,-.15f,z),new Vector3(2,.3f,4.7f),1,true);
-                    }
-                    route.Add(new Vector3(exitX,0,z+3.55f));
-                    route.Add(new Vector3(exitX,0,row<3?z+spacing-3.55f:z+10.5f));
+                    Footprint(2,14,12,10);Footprint(22,5,4,5);Footprint(20,10,12,10);
+                    Footprint(14,16,6,4);Footprint(6,24,4,6);Footprint(24,20,4,10);
+                    Footprint(6,30,22,4);Footprint(0,28,6,6);Footprint(28,26,12,12);
+                    BuildRooms();WetTunnel(8,5,14);Cistern(8,19);Pumps(24,18);
+                    Drain(2,31);Landmark("Studnia pod podwórkiem",3,30);
+                    Arch(new Vector3(16,0,18),90);Arch(new Vector3(26,0,24));
+                    Lamp(11,23);Lamp(25,29);Lamp(34,37);
+                    // A dry crossing is optional; water remains traversable everywhere along both banks.
+                    Shape("Niski mostek serwisowy",new Vector3(17,-.15f,0),new Vector3(2,.3f,4.7f),1,true);
+                    ExitDoor(level,38,34);
+                    level.checkpoints=new[]{new Vector3(8,.05f,15),new Vector3(26,.05f,31)};
+                    level.objectives=new[]{"Znajdź przejście do dalszego kanału.","Komory łączą się. Szukaj dalszego kanału.","Szukaj chłodnego światła przy odpływie."};
+                    level.suggestedRoute=new[]{P(8,-3.55f),P(8,3.55f),P(8,15),P(4,15),P(4,23),P(8,23),P(8,32),P(26,32),P(34,32),P(37.6f,34)};
+                    level.alternateRoute=new[]{P(24,-3.55f),P(24,3.55f),P(24,12),P(30,12),P(30,19),P(26,19),P(26,32),P(34,32),P(37.6f,34)};
+                    level.playableBounds=new Bounds(new Vector3(19,2,17),new Vector3(46,12,48));
                 }
-                level.suggestedRoute=route.ToArray();
+                else
+                {
+                    Footprint(2,14,14,10);Footprint(22,5,4,7);Footprint(34,5,4,7);
+                    Footprint(22,12,16,10);Footprint(16,16,6,4);Footprint(12,24,4,8);
+                    Footprint(12,32,14,8);Footprint(24,22,4,10);Footprint(34,22,4,12);
+                    Footprint(26,32,18,4);Footprint(40,28,10,14);
+                    BuildRooms();WetTunnel(8,5,14);Cistern(8,19);Pumps(27,20);
+                    Drain(17,37);Landmark("Komora pod włazem",18,33);
+                    Arch(new Vector3(20,0,18),90);Arch(new Vector3(36,0,27));
+                    Lamp(13,23);Lamp(14,31);Lamp(26,29);Lamp(44,40);
+                    Bridge(8,0);Bridge(28,0);
+                    Rat(new Vector3(11,.12f,-3.55f),new Vector3(17,.12f,-3.55f),.85f);
+                    Rat(new Vector3(26,.12f,14),new Vector3(34,.12f,14),1.05f);
+                    Rat(new Vector3(16,.12f,35),new Vector3(23,.12f,35),1.1f);
+                    ExitDoor(level,48,38);
+                    level.checkpoints=new[]{new Vector3(24,.05f,9),new Vector3(36,.05f,32)};
+                    level.objectives=new[]{"Znajdź drogę obok patroli. E / M — mapa.","Boczne komory prowadzą wokół pomp.","Chłodne światło prowadzi do wyjścia."};
+                    level.suggestedRoute=new[]{P(8,-3.9f),new Vector3(8,2.6f,-3.05f),new Vector3(8,2.6f,3.55f),new Vector3(18,2.6f,3.55f),P(19.45f,3.55f),P(24,3.55f),P(24,9),P(24,17),P(36,17),P(36,26),P(36,34),P(44,34),P(47.6f,38)};
+                    level.alternateRoute=new[]{P(5,-3.55f),P(5,3.55f),P(8,3.55f),P(8,15),P(4,15),P(4,23),P(14,23),P(14,33),P(25,33),P(36,33),P(44,33),P(47.6f,38)};
+                    level.playableBounds=new Bounds(new Vector3(24,2,18),new Vector3(56,12,52));
+                }
+                Landmark("Wejście",3,-3.55f);
+                var ordered=new System.Collections.Generic.List<Vector2Int>(floor.Keys);
+                ordered.Sort((a,b)=>a.y==b.y?a.x.CompareTo(b.x):a.y.CompareTo(b.y));
+                level.mapCells=new MapCell[ordered.Count];
+                for(int i=0;i<ordered.Count;i++) {var p=ordered[i];level.mapCells[i]=new MapCell(p.x+.5f,p.y+.5f,floor[p]);}
+                level.landmarks=landmarks.ToArray();
             }
+            private static Vector3 P(float x,float z) => new Vector3(x,0,z);
             public void Camera()
             {
                 var camera=Group("Poopline Camera",new Vector3(5,12.6f,-16.2f)).gameObject;

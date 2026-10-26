@@ -1,63 +1,55 @@
-# Poopline 0.4 — dwa etapy pod miastem
+# POOPLINE — odkrywanie kanałów (0.5)
 
-Grywalna przygodowa gra 3D ze stałą kamerą. Człowiek z telefonem przechodzi przez stare miejskie kanały, brodzi w nurcie i szuka drogi między pomostami. Polski klimat podziemi kamienic: ceglane sklepienia, betonowe płyty, żeliwne kraty, rury ciepłownicze i ciepłe lampy w mroku. Nie ma walki ani swobodnego skoku.
+Projekt do uruchamiania w Unity **6000.5.1f1**. Otwórz scenę `Assets/Poopline/Scenes/Poopline.unity` i kliknij **Play**. Pierwszy etap prowadzi automatycznie do drugiego. Nie ma trzeciego etapu.
 
-## Uruchomienie
+## Układ poziomów
 
-1. Otwórz projekt w Unity Hub, używając **Unity 6000.5.1f1**.
-2. Wybierz **Tools → Poopline → Open playable canal**.
-3. Kliknij **Play**, a następnie okno **Game**, żeby kierować postacią.
+**01 — Pod kamienicami.** Krótki kolektor z wodą prowadzi do dwóch odnóg. Przeciekający tunel, okrągła cysterna, komora pomp i studnia pod podwórkiem tworzą sieć z pętlami. Można wracać inną drogą, przechodzić między komorami i odkrywać górną galerię. Bez przeciwników. Nie ma obowiązkowego marszu przez cztery długie odcinki ani założonego minimalnego czasu przejścia.
 
-Gra zaczyna pierwszy etap od razu. Przejście przez końcowy boczny kanał uruchamia drugi etap po krótkim wygaszeniu obrazu. Drugi kończy się ekranem ukończenia obu poziomów. Nie ma trzeciego etapu.
+**02 — Żeliwne mosty.** Trzy wejścia w odnogi, dwa górne obejścia, cztery drabiny i trzy patrole szczurów. Woda, pomosty oraz boczne komory dają alternatywne drogi. Komora pod włazem i galeria pomp łączą się z dalszym odpływem. Kontakt ze szczurem przywraca ostatni punkt kontrolny w tym etapie.
 
-## Poziomy
+Wyjścia mają murowany portal i chłodne, zielonkawe światło. W świecie nie ma instrukcji ani napisów. Podpowiedzi pozostają w niebieskim interfejsie. Każdy etap ma dwa automatyczne punkty kontrolne.
 
-**01 — Pod kamienicami.** Spokojne poznawanie chodzenia, telefonu, brodzenia, nurtu i wychodzenia z wody. Cztery odcinki kolektora połączone wąskimi kanałami, otwarte komory boczne, przecieki i niskie mostki. Zamknięte fragmenty chodnika zachęcają do wejścia do wody. Bez przeciwników. Projektowane na około trzy minuty pierwszego przejścia; eksploracja i tempo gracza zmieniają czas.
+## Mapa i zapis odkryć
 
-**02 — Żeliwne mosty.** Dłuższa droga z trzema górnymi obejściami, sześcioma drabinami i pięcioma patrolującymi szczurami. Można wybierać drogę górą, wodą lub wolnym chodnikiem. Boczne odnogi, galerie pomp i zmiany kierunku utrudniają orientację. Kontakt ze szczurem odsyła do ostatniego punktu kontrolnego w bieżącym etapie.
+**E lub M** otwiera mapę bieżącego etapu. Pokazuje położenie i kierunek postaci, wodę, poznane przejścia, pomosty i drabiny. Nazwy charakterystycznych miejsc oraz symbol dalszego kanału pojawiają się dopiero po odkryciu. Żółte kropki na granicy odkrytego fragmentu wskazują miejsca, które można dalej zbadać.
 
-Każdy poziom ma trzy punkty kontrolne przy wejściach do kolejnych odcinków. Nie trzeba ich ręcznie aktywować. Stan nie jest zapisywany po zamknięciu gry.
+Mapa odsłania tylko najbliższe otoczenie postaci (zasięg 4,5 m). Ściany, zakręty i maszyny zasłaniają dalsze fragmenty. Nie pokazuje całego pokoju od razu ani odległych pomieszczeń. Fizyczna ciemność w świecie pozostaje niezależna od pamięci mapy.
+
+Odkrycia zapisują się lokalnie automatycznie, osobno dla każdego poziomu. Pozostają po kontakcie ze szczurem, restarcie etapu i ponownym Play. Przycisk **Wyczyść mapę tego etapu** pozwala rozpocząć odkrywanie od nowa; aktualne otoczenie pojawia się ponownie. Zmiana wersji układu izoluje stary zapis.
+
+Zapis obejmuje **odkrytą mapę**, nie pozycję gracza ani ukończenie kampanii. Nowe Play rozpoczyna pierwszy etap. Punkty kontrolne działają w bieżącej rozgrywce.
 
 ## Sterowanie
 
 | Czynność | Klawisze |
 | --- | --- |
 | Chodzenie / brodzenie | WASD lub strzałki |
-| Drabina ustawiona przodem — wejście / zejście | W/↑ lub S/↓ |
-| Drabina boczna — wejście / zejście | A/← lub D/→ |
-| Zatrzymanie na drabinie | Puść kierunek; przeciwny pozwala zawrócić |
-| Pauza / wznowienie | Escape |
-| Restart aktualnego etapu | R |
+| Drabiny | Kierunek zgodny z ustawieniem drabiny |
+| Mapa / zamknięcie mapy | E lub M |
+| Zamknięcie mapy, poza nią pauza | Escape |
+| Restart bieżącego etapu | R |
 
-Drabina chwyta automatycznie przy ruchu zgodnym z jej ustawieniem; nie używa E. Podpowiedź w niebieskim panelu pokazuje właściwy kierunek. Po dotarciu na podest zwolnij kierunek i naciśnij go ponownie, żeby ruszyć dalej.
+Drabiny chwytają automatycznie. Po dotarciu na podest puść kierunek, zanim ruszysz dalej. Z górnych pomostów można zejść wyłącznie drabinami. Z nurtu można wyjść na oba brzegi i iść pod prąd.
 
-**Z górnych pomostów schodzi się wyłącznie drabinami.** Widoczne poręcze mają kolizje, a kontroler zabezpiecza także krawędzie otworów przy drabinach. Na dolnym chodniku można swobodnie wchodzić do wody i wychodzić na oba brzegi. Nurt znosi postać, ale można iść pod prąd. Górne pomosty pozostają suche.
+Otwarcie mapy zatrzymuje postać, wodę, patrole oraz zegar. Zamknięcie nie usuwa wcześniej włączonej pauzy. Utrata fokusu również zatrzymuje grę; powrót do okna nie wznawia jej automatycznie. Restart po ukończeniu obu etapów wraca do pierwszego, zachowując mapy.
 
-Utrata fokusu zatrzymuje rozgrywkę. Powrót do okna nie wznawia jej automatycznie. R restartuje bieżący poziom; przy ekranie ukończenia zaczyna całą podróż od pierwszego.
+## Świat i edycja
 
-## Światło i woda
+Cegła, płyty posadzki, żeliwne kraty, pompy, przeciekające przewody i studnia pod podwórkiem nawiązują do starych polskich kanałów. Oświetlenie pochodzi z miejscowych lamp i telefonu. Zachowano cienie oraz odsłanianie architektury, gdy zasłania bohatera. Woda wpływa i odpływa za kratami, spada do ciemnych komór i kapie z rur. To animowana geometria i lokalne prądy, bez symulacji hydraulicznej.
 
-Scenę oświetlają miejscowe ciepłe lampy oraz chłodny telefon, obracany wraz z postacią. Zachowane są cienie i delikatne odbicie światła pozwalające widzieć bohatera. Nie ma słońca, światła otoczenia ani ogólnego rozjaśnienia kanału. Dalsze odcinki wyłaniają się z mroku po podejściu, również podczas ruchu w bocznych tunelach. Nie ma trwałej pamięci odkrytej mapy. Sklepienia i nadproża zasłaniające postać są chwilowo odsłaniane dla kamery; zachowują kolizje i cienie.
+Oba poziomy są zwykłymi obiektami jednej sceny: `01 — Pod kamienicami` i `02 — Żeliwne mosty`. Tylko pierwszy jest aktywny w zapisanej scenie. Postać, kamera i interfejs są wspólne.
 
-Woda przechodzi przez murowane wloty i odpływy za żeliwnymi kratami. Za nimi jest dalszy odcinek wody i spadek do ciemnego kolektora. Boczne kanały są dostępne dla postaci; widać w nich krople z przewodów i kratowane odpływy w podłodze. To animowana geometria i lokalne prądy, bez symulacji hydraulicznej. Instrukcje pozostają wyłącznie w niebieskim interfejsie — w świecie nie ma napisów ani etykiet.
+**Tools → Poopline → Rebuild playable canal** odtwarza scenę z przepisu, zastępując ręczne zmiany. Nie jest potrzebne do zwykłego Play. Lokalna kopia wersji 0.4 znajduje się w `Library/PooplineBackups/before-exploration-maze-20261026.tar.gz`.
 
-## Edycja
-
-Scena `Assets/Poopline/Scenes/Poopline.unity` zawiera dwa zwykłe, edytowalne obiekty etapów: `01 — Pod kamienicami` i `02 — Żeliwne mosty`. Pierwszy jest aktywny przy starcie; drugi włącza się po ukończeniu pierwszego. Postać, kamera i interfejs są wspólne. Aby obejrzeć drugi etap przed Play, można tymczasowo przełączyć aktywność obu obiektów w Inspectorze. Play zawsze rozpoczyna od pierwszego etapu.
-
-**Rebuild playable canal** odtwarza oba układy z przepisu i zastępuje ręczne zmiany sceny. Nie jest potrzebne do zwykłego uruchamiania. Kopia układu sprzed rozbudowy znajduje się lokalnie w `Library/PooplineBackups/before-two-levels-20261026.tar.gz`.
-
-- `Runtime/PooplineGame.cs`, `SewerLevel.cs` — kolejność etapów, przejścia, punkty kontrolne i restart.
-- `Runtime/SewerPlayer.cs`, `ElevatedWalkway.cs` — ruch, brodzenie, wspinanie i ochrona krawędzi.
-- `Runtime/FlowVolume.cs`, `WaterMotion.cs`, `WaterDrip.cs` — nurty, refleksy i krople.
-- `Runtime/SewerLadder.cs`, `RatPatrol.cs` — drabiny i patrole.
-- `Runtime/SewerCamera.cs`, `SewerLighting.cs`, `SewerCutaway.cs`, `RunnerHud.cs` — kamera, światło i interfejs.
-- `Runtime/SewerWorld.cs` — przepis do tworzenia edytowalnej sceny.
-- `Editor/` — otwieranie, odtwarzanie, walidacja oraz uruchamianie testów.
-- `Tests/PlayMode/PrototypeTests.cs` — sprawdzanie aktualnych zasad i pełnej drogi przez oba poziomy.
+- `Runtime/SewerWorld.cs`, `SewerLevel.cs` — geometria, połączenia komór, dane mapy i punkty orientacyjne.
+- `Runtime/ExplorationMap.cs`, `ExplorationMapView.cs` — odkrywanie, lokalny zapis i ekran mapy.
+- `Runtime/PooplineGame.cs`, `RunnerInput.cs`, `RunnerHud.cs` — etapy, sterowanie i interfejs.
+- `Runtime/SewerPlayer.cs`, `SewerLadder.cs`, `ElevatedWalkway.cs` — ruch i bezpieczne pomosty.
+- Pozostałe elementy `Runtime/` — kamera, światło, zasłanianie postaci, woda i szczury.
 
 ## Sprawdzenie
 
-**Tools → Poopline → Run PlayMode checks** uruchamia testy w otwartym Editorze. Wynik trafia do `TestResults/PlayMode-0.4.xml`, postęp do `TestResults/0.4-progress.txt`, a zmierzone czasy pełnej trasy do `TestResults/stage-times.txt`. Dodatkowe **Run tunnel visibility checks** sprawdza kamerę, światło i odsłanianie postaci; zapisuje `TestResults/Visibility-0.4.xml`. Wyniki i zakres ręcznego sprawdzenia są w `VALIDATION.md`.
+**Tools → Poopline → Run PlayMode checks** uruchamia sprawdzenie w otwartym Editorze. Raport: `TestResults/PlayMode-0.5.xml`; postęp: `TestResults/0.5-progress.txt`. Testy przechodzą oba etapy rzeczywistym ruchem po głównej i alternatywnej trasie. Zapis map testowych jest odizolowany od odkryć gracza i usuwany po sprawdzeniu. Szczegółowy wynik znajduje się w `VALIDATION.md`.
 
-Silnik i pakiety pozostały bez zmian. To wersja do testowania w Unity Editor na Macu, działająca offline. Nie przygotowano nowego wydania macOS ani wersji mobilnych; stary plik w `Builds` nie reprezentuje 0.4. Grafika i animacje pozostają prototypowe. Nie dodano nagrań dźwiękowych. Zmiany nie są commitowane ani stage’owane.
+Silnik i pakiety nie były aktualizowane. To lokalna wersja do testowania przez Play w Unity Editor. Stare aplikacje w `Builds` nie reprezentują 0.5. Grafika i animacje pozostają prototypowe; nie dodano nagrań dźwiękowych.

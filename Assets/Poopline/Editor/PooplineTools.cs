@@ -61,7 +61,7 @@ namespace Poopline.Editor
             EditorSceneManager.SaveScene(scene,ScenePath);
             EditorBuildSettings.scenes=new[]{new EditorBuildSettingsScene(ScenePath,true)};
             EditorSceneManager.playModeStartScene=null;
-            PlayerSettings.bundleVersion="0.4.0";
+            PlayerSettings.bundleVersion="0.5.0";
             AssetDatabase.SaveAssets();
             if(SceneView.lastActiveSceneView!=null)
             {
@@ -70,7 +70,7 @@ namespace Poopline.Editor
                 SceneView.lastActiveSceneView.Repaint();
             }
             Selection.activeGameObject=null;
-            Debug.Log("POOPLINE_04_SCENE_READY");
+            Debug.Log("POOPLINE_05_SCENE_READY");
         }
         [MenuItem("Tools/Poopline/Validate playable canal",priority=20)]
         public static void ValidateProject()
@@ -80,13 +80,14 @@ namespace Poopline.Editor
             var stages=game.GetComponentsInChildren<SewerLevel>(true);
             if(stages.Length!=2 || game.GetComponentsInChildren<SewerPlayer>().Length!=1)
                 throw new InvalidOperationException("Incomplete campaign.");
-            if(stages[0].GetComponentsInChildren<RatPatrol>(true).Length!=0 || stages[1].GetComponentsInChildren<RatPatrol>(true).Length!=5 || stages[1].GetComponentsInChildren<SewerLadder>(true).Length!=6)
+            if(stages[0].GetComponentsInChildren<RatPatrol>(true).Length!=0 || stages[1].GetComponentsInChildren<RatPatrol>(true).Length!=3 || stages[1].GetComponentsInChildren<SewerLadder>(true).Length!=4)
                 throw new InvalidOperationException("Incorrect stage encounters.");
+            foreach(var stage in stages) if(stage.mapCells.Length<500 || stage.landmarks.Length<4) throw new InvalidOperationException("Missing exploration layout.");
             if(game.GetComponentsInChildren<TextMesh>(true).Length!=0)
                 throw new InvalidOperationException("World-space labels are not allowed.");
             foreach(var child in game.GetComponentsInChildren<Transform>(true))
                 if(GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(child.gameObject)!=0) throw new InvalidOperationException("Missing script: "+child.name);
-            Debug.Log("POOPLINE_04_VALIDATED");
+            Debug.Log("POOPLINE_05_VALIDATED");
         }
     }
 }

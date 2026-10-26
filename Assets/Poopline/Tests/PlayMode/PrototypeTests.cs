@@ -14,6 +14,7 @@ namespace Poopline.Tests
     {
         private PooplineGame game;
         private Keyboard keyboard;
+        private string previousSaveNamespace, testSaveNamespace;
         private InputSettings.BackgroundBehavior background;
 #if UNITY_EDITOR
         private InputSettings.EditorInputBehaviorInPlayMode editorInput;
@@ -22,6 +23,9 @@ namespace Poopline.Tests
         public IEnumerator SetUp()
         {
             Time.timeScale=1;
+            previousSaveNamespace=ExplorationMap.SaveNamespace;
+            testSaveNamespace="Poopline.Tests."+System.Guid.NewGuid();
+            ExplorationMap.SaveNamespace=testSaveNamespace;
             background=InputSystem.settings.backgroundBehavior;
             InputSystem.settings.backgroundBehavior=InputSettings.BackgroundBehavior.IgnoreFocus;
 #if UNITY_EDITOR
@@ -46,13 +50,15 @@ namespace Poopline.Tests
 #endif
             if(game!=null) Object.Destroy(game.gameObject);
             yield return null;
+            for(int i=0;i<2;i++) PlayerPrefs.DeleteKey(testSaveNamespace+".v"+PooplineGame.LayoutVersion+".level"+i);
+            PlayerPrefs.Save();ExplorationMap.SaveNamespace=previousSaveNamespace;
         }
         private void Keys(params Key[] keys) { InputSystem.QueueStateEvent(keyboard,new KeyboardState(keys)); }
         private Key Direction(Vector3 v) => Mathf.Abs(v.x)>.5f?(v.x>0?Key.D:Key.A):(v.z>0?Key.W:Key.S);
         private IEnumerator WalkTo(Vector3 point,float tolerance=.18f)
         {
             int stage=game.LevelIndex;
-            float deadline=Time.realtimeSinceStartup+65;
+            float deadline=Time.realtimeSinceStartup+20;
             while(Time.realtimeSinceStartup<deadline)
             {
                 if(game.Transitioning || game.Completed || stage!=game.LevelIndex) {Keys();yield return null;yield break;}
@@ -110,7 +116,7 @@ namespace Poopline.Tests
         [UnityTest]
         public IEnumerator WaterDriftsButCanBeCrossedAndExitedOnBothBanks()
         {
-            foreach(float x in new[]{8f,35f,72f})
+            foreach(float x in new[]{8f,21f,28f})
             {
                 game.Player.ResetAt(new Vector3(x,.05f,-2.75f));
                 yield return WalkTo(new Vector3(x,0,0));Assert.That(game.Player.InWater,Is.True);
@@ -128,13 +134,13 @@ namespace Poopline.Tests
         [UnityTest]
         public IEnumerator SideTunnelConnectsChambersAndRecordsCheckpoint()
         {
-            game.Player.ResetAt(new Vector3(96,.05f,3.55f));
-            yield return WalkTo(new Vector3(96,0,9));
+            game.Player.ResetAt(new Vector3(8,.05f,3.55f));
+            yield return WalkTo(new Vector3(8,0,9));
             Assert.That(game.Player.InWater,Is.True);
             ScreenCapture.CaptureScreenshot("TestResults/side-channel.png");
             yield return new WaitForEndOfFrame();
-            Assert.That(game.CurrentLevel.GetComponentsInChildren<WaterDrip>().Length,Is.GreaterThan(20));
-            yield return WalkTo(new Vector3(96,0,18.45f));
+            Assert.That(game.CurrentLevel.GetComponentsInChildren<WaterDrip>().Length,Is.GreaterThan(15));
+            yield return WalkTo(new Vector3(8,0,15));
             Assert.That(game.CheckpointIndex,Is.Zero);
             Assert.That(game.Player.InWater,Is.False);
             Assert.That(game.Recoveries,Is.Zero);
@@ -168,6 +174,17 @@ namespace Poopline.Tests
                     }
                     else yield return WalkTo(point);
                     Assert.That(game.Recoveries,Is.Zero,"Route waypoint "+point);
+                    if(stage==0 && Mathf.Abs(point.x-4)<.1f && point.z>20)
+                    {
+                        yield return new WaitForSeconds(.3f);
+                        ScreenCapture.CaptureScreenshot("TestResults/cistern.png");yield return new WaitForEndOfFrame();
+                    }
+                    if(stage==0 && Mathf.Abs(point.x-26)<.1f && point.z>30)
+                    {
+                        game.ToggleMap();
+                        ScreenCapture.CaptureScreenshot("TestResults/maze-explored.png");yield return new WaitForEndOfFrame();
+                        game.ToggleMap();
+                    }
                     if(!captured && ((stage==0 && game.Player.InWater) || (stage==1 && game.Player.transform.position.y>2)))
                     {
                         ScreenCapture.CaptureScreenshot("TestResults/stage-"+(stage+1)+".png");captured=true;
@@ -178,13 +195,13 @@ namespace Poopline.Tests
                 {
                     Assert.That(game.Transitioning,Is.True);
                     yield return new WaitForSeconds(1.6f);
-                    Assert.That(game.LevelIndex,Is.EqualTo(1));Assert.That(game.Rats.Length,Is.EqualTo(5));
+                    Assert.That(game.LevelIndex,Is.EqualTo(1));Assert.That(game.Rats.Length,Is.EqualTo(3));
                     Assert.That(game.CheckpointReached,Is.False);
                 }
             }
             Assert.That(game.Completed,Is.True);
-            Assert.That(game.StageTimes[0],Is.InRange(125,230));
-            Assert.That(game.StageTimes[1],Is.GreaterThan(game.StageTimes[0]));
+            Assert.That(game.StageTimes[0],Is.InRange(10,120));
+            Assert.That(game.StageTimes[1],Is.InRange(10,150));
             File.WriteAllText("TestResults/stage-times.txt","Level 1: "+game.StageTimes[0].ToString("F1")+" seconds\nLevel 2: "+game.StageTimes[1].ToString("F1")+" seconds\nRecoveries: "+game.Recoveries+"\n");
         }
         [UnityTest,Timeout(120000)]
@@ -309,12 +326,12 @@ namespace Poopline.Tests
             foreach(var light in game.GetComponentsInChildren<Light>(true))
             {
                 Assert.That(light.type,Is.Not.EqualTo(LightType.Directional));
-                if(light.transform.IsChildOf(game.CurrentLevel.transform) && Mathf.Abs(light.transform.position.x-25)<.1f && light.transform.position.z<5) farLamp=light;
+                if(light.transform.IsChildOf(game.CurrentLevel.transform) && Mathf.Abs(light.transform.position.x-25)<.1f && light.transform.position.z>25) farLamp=light;
             }
             Assert.That(farLamp,Is.Not.Null);Assert.That(farLamp.intensity,Is.Zero);
             Keys(Key.D);yield return new WaitForSeconds(.2f);Assert.That(phone.transform.forward.x,Is.GreaterThan(.7f));
             Keys(Key.A);yield return new WaitForSeconds(.35f);Keys();Assert.That(phone.transform.forward.x,Is.LessThan(-.7f));
-            game.Player.ResetAt(new Vector3(25,.05f,3.55f));yield return new WaitForSeconds(.15f);
+            game.Player.ResetAt(new Vector3(25,.05f,28));yield return new WaitForSeconds(.15f);
             Assert.That(farLamp.intensity,Is.GreaterThan(1));Assert.That(phone.transform.forward.y,Is.LessThan(-.2f));
             game.Restart();yield return new WaitForSeconds(.15f);Assert.That(farLamp.intensity,Is.Zero);
         }
@@ -323,7 +340,7 @@ namespace Poopline.Tests
         {
             Quaternion rotation=game.GameCamera.transform.rotation;
             Vector3 before=game.GameCamera.transform.position;
-            game.Player.ResetAt(new Vector3(96,.05f,8));yield return new WaitForSeconds(.8f);
+            game.Player.ResetAt(new Vector3(8,.05f,8));yield return new WaitForSeconds(.8f);
             Assert.That(Quaternion.Angle(rotation,game.GameCamera.transform.rotation),Is.LessThan(.01f));
             Assert.That(game.GameCamera.transform.position.z,Is.GreaterThan(before.z+5));
             game.SendMessage("OnApplicationFocus",false);Assert.That(game.Paused,Is.True);
@@ -332,8 +349,8 @@ namespace Poopline.Tests
         [UnityTest]
         public IEnumerator TunnelLintelRevealsThePlayerAndReturnsWhenLeaving()
         {
-            game.Player.ResetAt(new Vector3(96,.05f,3.55f));
-            yield return WalkTo(new Vector3(96,0,9));
+            game.Player.ResetAt(new Vector3(8,.05f,3.55f));
+            yield return WalkTo(new Vector3(8,0,9));
             yield return new WaitForSeconds(.25f);
             Vector3 from=game.GameCamera.transform.position;
             Vector3 delta=game.Player.transform.position+Vector3.up*.9f-from;
@@ -347,10 +364,79 @@ namespace Poopline.Tests
             }
             Assert.That(lintel,Is.Not.Null,"This camera angle must exercise the actual doorway obstruction");
             ScreenCapture.CaptureScreenshot("TestResults/side-channel.png");yield return new WaitForEndOfFrame();
-            yield return WalkTo(new Vector3(96,0,3.55f));
+            yield return WalkTo(new Vector3(8,0,3.55f));
             yield return new WaitForSeconds(.3f);
             Assert.That(lintel.Hidden,Is.False);
             Assert.That(lintel.GetComponent<Renderer>().shadowCastingMode,Is.EqualTo(UnityEngine.Rendering.ShadowCastingMode.On));
+        }
+        [UnityTest,Timeout(180000)]
+        public IEnumerator AlternateRoutesAlsoReachBothExitsWithoutRecoveries()
+        {
+            Time.timeScale=2;
+            for(int stage=0;stage<2;stage++)
+            {
+                foreach(var point in game.CurrentLevel.alternateRoute) yield return WalkTo(point);
+                Assert.That(game.Recoveries,Is.Zero);
+                if(stage==0) { Assert.That(game.Transitioning,Is.True);yield return new WaitForSeconds(1.6f); }
+            }
+            Assert.That(game.Completed,Is.True);
+        }
+        [UnityTest]
+        public IEnumerator MapKeysPauseExplorationAndEscapeReturnsToTheGame()
+        {
+            yield return SecondStage();
+            game.Player.ResetAt(new Vector3(22,-.6f,0));yield return new WaitForSeconds(.3f);
+            Assert.That(game.Player.InWater,Is.True);
+            Keys(Key.E);yield return null;yield return null;Keys();yield return null;
+            Assert.That(game.MapOpen,Is.True);Assert.That(game.Frozen,Is.True);
+            Vector3 player=game.Player.transform.position,rat=game.Rats[0].transform.position;
+            float clock=game.Elapsed;
+            Keys(Key.D);yield return new WaitForSeconds(.4f);Keys();yield return null;
+            Assert.That(game.Player.transform.position,Is.EqualTo(player));Assert.That(game.Rats[0].transform.position,Is.EqualTo(rat));
+            Assert.That(game.Elapsed,Is.EqualTo(clock));
+            Keys(Key.M);yield return null;yield return null;Keys();yield return null;
+            Assert.That(game.MapOpen,Is.False);Assert.That(game.Frozen,Is.False);
+            Keys(Key.M);yield return null;yield return null;Keys();yield return null;
+            Assert.That(game.MapOpen,Is.True);
+            Keys(Key.Escape);yield return null;yield return null;Keys();yield return null;
+            Assert.That(game.MapOpen||game.Paused,Is.False);
+            game.TogglePause();game.ToggleMap();game.ToggleMap();Assert.That(game.Paused,Is.True,"Closing map preserves explicit pause");
+        }
+        [UnityTest]
+        public IEnumerator ExplorationHidesUnknownRoomsAndSurvivesRestartAndReload()
+        {
+            Assert.That(game.Map.Count,Is.InRange(1,70));
+            Assert.That(game.Map.HasCell(new Vector2Int(8,19)),Is.False,"Solid cistern is not an unexplored path");
+            Assert.That(game.Map.IsDiscovered(game.CurrentLevel.exit.center),Is.False);
+            Assert.That(game.Map.IsDiscovered(new Vector3(8,0,19)),Is.False);
+            // Two nearby points on opposite sides of the masonry between the two branches.
+            game.Player.ResetAt(new Vector3(12,.05f,15));yield return new WaitForSeconds(.3f);
+            Assert.That(game.Map.IsDiscovered(new Vector3(15.5f,0,16.5f)),Is.False,"A diagonal cannot survey through the solid room corner");
+            Vector3 visited=game.Player.transform.position;Assert.That(game.Map.IsDiscovered(visited),Is.True);
+            int count=game.Map.Count;game.Restart();yield return new WaitForSeconds(.3f);
+            Assert.That(game.Map.Count,Is.GreaterThanOrEqualTo(count));Assert.That(game.Map.IsDiscovered(visited),Is.True);
+            game.Map.Save();
+            var loaded=new ExplorationMap(game.CurrentLevel,0);
+            Assert.That(loaded.Export(),Is.EqualTo(game.Map.Export()));
+            yield return SceneManager.LoadSceneAsync("Poopline");
+            game=Object.FindAnyObjectByType<PooplineGame>();
+            if(game.Paused) game.TogglePause();
+            Assert.That(game.Map.IsDiscovered(visited),Is.True,"Reload restores the saved survey");
+            Assert.That(game.Map.Count,Is.GreaterThanOrEqualTo(count));
+            yield return SecondStage();Assert.That(game.Map.IsDiscovered(visited),Is.False,"Each stage has its own survey");
+        }
+        [UnityTest]
+        public IEnumerator MapShowsOnlyDiscoveredLandmarksAndCanStartFresh()
+        {
+            game.Player.ResetAt(new Vector3(4,.05f,19));yield return new WaitForSeconds(.4f);
+            Assert.That(game.Map.IsDiscovered(game.CurrentLevel.landmarks[0].position),Is.True);
+            game.ToggleMap();
+            ScreenCapture.CaptureScreenshot("TestResults/exploration-map.png");yield return new WaitForEndOfFrame();
+            game.Map.Clear();Assert.That(game.Map.Count,Is.Zero);
+            game.Map.Restore("invalid record!");Assert.That(game.Map.Count,Is.Zero);
+            game.Map.Restore(System.Convert.ToBase64String(new byte[]{1}));Assert.That(game.Map.Count,Is.Zero);
+            game.Map.Discover(game.Player.transform.position,true);Assert.That(game.Map.Count,Is.GreaterThan(0));
+            Assert.That(game.Map.IsDiscovered(game.CurrentLevel.exit.center),Is.False);
         }
         [Test]
         public void CurrentIsLocalAndDoesNotReachUpperWalkway()

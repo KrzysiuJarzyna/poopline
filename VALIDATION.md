@@ -1,39 +1,46 @@
-# Sprawdzenie Poopline 0.4.0
+# Sprawdzenie Poopline 0.5.0
 
-26 października 2026. Unity **6000.5.1f1**, macOS, lokalny Unity Editor.
+26 października 2026. Unity **6000.5.1f1**, macOS, lokalny Unity Editor. Układ sceny: **8**.
 
-## Rozgrywka
+## Wynik
 
-Pełny zestaw **16/16 testów PlayMode**, zero błędów, pominięć i testów nieokreślonych. Czas zestawu: **363.86 s**. Raport: `TestResults/PlayMode-0.4.xml`, zakończony 26.10.2026 o 14:06:49 UTC.
+**21/21 testów PlayMode**, zero błędów, pominięć i testów nieokreślonych. Czas zestawu: **208.72 s**. Zakończenie: **2026-10-26 16:38:38Z**. Raport: `TestResults/PlayMode-0.5.xml`, postęp: `TestResults/0.5-progress.txt`.
 
-- Pełne przejście pierwszego etapu, automatyczne uruchomienie drugiego i ukończenie drugiego na rzeczywistym kontrolerze, klawiaturze oraz kolizjach. Bez teleportowania postaci do kolejnych fragmentów i bez awaryjnych powrotów.
-- Zmierzony czas gry znaną trasą: **156.1 s / 2:36** dla pierwszego etapu, **204.4 s / 3:24** dla drugiego. W teście pełnej trasy zegar Unity działał z mnożnikiem 2, bez zmiany prędkości postaci, drabin lub nurtu. Podane wyniki to czas gry, nie czas oczekiwania automatu. Nie obejmują szukania drogi i oglądania bocznych komór; pierwsze przejście przez gracza może być dłuższe. Raport: `TestResults/stage-times.txt`.
-- Start pierwszego etapu bez przeciwników, nieaktywny drugi etap, brak napisów TextMesh w obu światach.
-- Chodzenie, zatrzymanie, cofanie; nurt znoszący postać, ruch pod prąd i wyjście na oba brzegi w trzech miejscach.
-- Wejście do bocznego kanału, brodzenie w nim, przejście do następnego odcinka oraz zapis punktu kontrolnego.
-- Wszystkie sześć górnych powierzchni: próby wyjścia za krawędź w ośmiu kierunkach, bez spadnięcia do wody. Kolizje widocznych poręczy uzupełnia ochrona otworów przy drabinach.
-- Wszystkie sześć drabin: wejście i zejście zgodnie z ich ustawieniem, zatrzymanie, cofanie, pauza i oczekiwanie na puszczenie kierunku po dotarciu na podest.
-- Automatyczny chwyt bocznej drabiny przy podejściu z górnej platformy. Odejście po skosie po zejściu nie przyciąga ponownie na drabinę — osobny test regresji dla wszystkich sześciu drabin.
-- Kontakt ze szczurem przywraca właściwy punkt kontrolny bieżącego poziomu. Pierwszy etap nie ma szczurów; drugi ma pięć patroli.
-- Pauza zatrzymuje ruch, patrole, krople i zegar. Restart drugiego etapu pozostaje w drugim. Restart po ukończeniu całości wraca do pierwszego.
-- Przejście między etapami zatrzymuje sterowanie; można je zatrzymać pauzą. Dopiero wyjście z drugiego poziomu kończy całość.
-- Kamera podąża także w boczne odnogi. Utrata fokusu wstrzymuje grę i nie wznawia jej automatycznie.
-- Telefon podąża za obrotem postaci. Brak słońca i światła otoczenia; dalekie lampy pozostają wygaszone i odsłaniają się po podejściu.
+- Rzeczywisty ruch klawiaturą przez oba poziomy główną trasą, automatyczne przejście między etapami i ukończenie całości. Bez teleportacji i awaryjnych powrotów.
+- Osobne przejście obu etapów alternatywnymi trasami, również bez awaryjnych powrotów. W drugim wariancie przejście wodą omija wejście na drabinę, a trasa przez boczne komory omija patrole.
+- Mapa pod E oraz M: otwieranie, zamykanie oboma klawiszami i Escape. Zatrzymanie gracza w nurcie, szczurów i zegara. Zamknięcie mapy zachowuje wcześniej włączoną pauzę.
+- Na początku tylko najbliższy odkryty fragment. Ukryte wyjście, oddzielne zapisy etapów, brak odkrywania przez narożnik ściany. Wnętrze cysterny nie jest oznaczane jako nieodkryta droga.
+- Zachowanie odkryć po restarcie, odczyt lokalnego zapisu i rzeczywiste ponowne załadowanie sceny. Czyszczenie mapy oraz odrzucanie błędnego lub niepasującego zapisu.
+- Punkty orientacyjne na mapie pojawiają się dopiero po odkryciu. Brak napisów TextMesh w świecie.
+- Chodzenie, zatrzymanie i cofanie; brodzenie, nurt, ruch pod prąd oraz wychodzenie na oba brzegi w trzech miejscach.
+- Przeciekający tunel prowadzi do komory i uruchamia punkt kontrolny. Kamera podąża za bocznymi odnogami.
+- Wszystkie cztery górne powierzchnie: próby spadnięcia w ośmiu kierunkach, bez utraty wysokości.
+- Wszystkie cztery drabiny: wejście i zejście, zatrzymanie, cofanie, pauza, zwolnienie kierunku po dotarciu. Boczne drabiny chwytają przed krawędzią; odejście po skosie nie przyciąga ponownie.
+- Szczur przywraca punkt kontrolny właściwego etapu. Restart pozostaje w aktualnym etapie; restart po ukończeniu całości wraca do pierwszego.
+- Pauza zatrzymuje wodę, krople, patrole i zegar, także w trakcie przejścia między etapami. Utrata fokusu zatrzymuje grę.
+- Telefon obraca się z postacią, dalekie lampy pozostają wygaszone, brak światła otoczenia i słońca. Zasłaniające nadproże odsłania postać i wraca po wyjściu z tunelu.
 
-## Widoczność i obraz
+Znana trasa z testu:
 
-Po sprawdzeniu pełnej trasy poprawiono wyłącznie zasłanianie postaci przez nadproża i sklepienia bocznych kanałów. Odsłaniane elementy zachowują kolizje oraz rzucane cienie. Dla tej poprawki osobno przeszły **4/4 testy** kamery, telefonu, przejścia przez boczny kanał i przywracania widoczności nadproża po wyjściu. Czas: 15.94 s; zakończenie: 2026-10-26 14:15:10Z. Raport: `TestResults/Visibility-0.4.xml`.
+```text
+Level 1: 26.5 seconds
+Level 2: 32.1 seconds
+Recoveries: 0
+```
 
-Ręcznie w Unity sprawdzono uruchomienie przez Play, chodzenie i brodzenie oraz wygląd telefonu, cieni, wody i ceglanego kanału. Obrazy z rzeczywistej rozgrywki testowej sprawdzono także dla górnego pomostu i bocznego tunelu: `TestResults/stage-1.png`, `stage-2.png`, `side-channel.png`. Pełną drogę przez oba etapy potwierdza automatyczny test ruchu, nie ręczna sesja.
+To czas gry bez szukania drogi. W testach pełnych tras zegar Unity działał z mnożnikiem 2, bez zmiany prędkości postaci czy zasad kolizji. Obecne poziomy celowo nie wymuszają trzech minut marszu; eksploracja odnóg i oglądanie mapy nie są ujęte w powyższych czasach.
 
-Scenę waliduje **Tools → Poopline → Validate playable canal**: dwa etapy, jedna postać, zero szczurów w pierwszym, pięć w drugim, sześć drabin, brak napisów w świecie i brak brakujących skryptów. Zapisana scena zawiera edytowalne obiekty obu etapów; tylko pierwszy jest aktywny przy starcie.
+## Obraz i scena
 
-## Zakres
+Sprawdzono podgląd rzeczywistej gry oraz mapę uruchomioną klawiszem E. Przejrzano obrazy z rozgrywki testowej: `TestResults/cistern.png`, `maze-explored.png`, `exploration-map.png` i `stage-2.png`. Mapa pokazuje fragment odwiedzonej sieci, pozycję i kierunek postaci, a pozostałe komory pozostają niewidoczne.
 
-- Dwa etapy w jednej scenie startowej. Nie ma trzeciego poziomu ani mapy miasta.
-- Woda i krople są animowaną geometrią z lokalnymi prądami, bez symulacji hydraulicznej lub pływania. Wloty i odpływy mają dalsze odcinki za kratą oraz spadki do ciemnych komór; boczne kanały są dostępne dla postaci.
-- Zachowano prototypowe materiały, sylwetkę oraz animacje. Dodano murowane łuki, odpływy z rur, kraty, żeliwne włazy, koła zasuw i pompy. Brak nagrań dźwiękowych.
-- Punkty kontrolne obowiązują w bieżącej rozgrywce; brak zapisu kampanii między uruchomieniami.
-- Silnik i pakiety bez aktualizacji. Nie wykonano nowego buildu macOS ani testów na iOS/Androidzie. Stare aplikacje w `Builds` nie przedstawiają tej wersji.
-- Raporty i obrazy w `TestResults` są lokalne i ignorowane przez Git. Kopia stanu sprzed rozbudowy jest w `Library/PooplineBackups/before-two-levels-20261026.tar.gz`.
-- Nie utworzono commitów, nie zmieniano historii Git, nie wykonano push ani stagingu.
+Walidacja sceny w Editorze: `POOPLINE_05_VALIDATED`. Dwa etapy, jedna postać, zero szczurów w pierwszym, trzy w drugim, cztery drabiny, dane map obu etapów, brak napisów w świecie i brak brakujących skryptów.
+
+## Zakres i zapis
+
+- Dwa zwarte układy komór z pętlami i alternatywnymi trasami, w jednej scenie. Nowe Play rozpoczyna etap pierwszy.
+- Odkrycia mapy są zapisywane lokalnie w PlayerPrefs, osobno dla etapu i wersji układu. Zapis nie przywraca pozycji postaci ani ukończenia kampanii. Punkty kontrolne obowiązują w bieżącej rozgrywce.
+- Testy używają własnej przestrzeni zapisu, usuwanej po każdym teście; nie odsłaniają map gracza.
+- Woda jest animowaną geometrią z lokalnymi prądami; grafika i animacje pozostają prototypowe. Brak nagrań dźwiękowych.
+- Silnik i pakiety bez aktualizacji. Nie wykonano nowego buildu macOS ani testów mobilnych. Stare aplikacje w `Builds` nie przedstawiają 0.5.
+- Raporty, obrazy i kopia poprzedniej wersji (`Library/PooplineBackups/before-exploration-maze-20261026.tar.gz`) są lokalne, poza śledzonymi plikami gry.
